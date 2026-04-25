@@ -30,9 +30,9 @@ const CHART_CFG = {
 
 export default function CommuneDashboardScreen({ navigation, route }) {
   const { t } = useTranslation();
-  const { user, userProfile } = useAuth();
+  const { userRole, userProfile } = useAuth();
   const communeId = route?.params?.communeId || userProfile?.communeId || 'demo';
-  const communeName = route?.params?.communeName || userProfile?.communeName || 'Ma Commune';
+  const communeName = userRole === 'admin' ? 'Administration HIWAYTI' : (route?.params?.communeName || userProfile?.communeName || 'Ma Commune');
 
   const [stats, setStats] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');

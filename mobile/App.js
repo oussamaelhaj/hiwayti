@@ -145,7 +145,7 @@ function ProfileStack() {
 // ── MAIN TABS ─────────────────────────────────────────────────────────────────
 function MainTabs({ userRole }) {
   const isDashboardRole = [USER_ROLES.ARTISAN, USER_ROLES.PROVIDER].includes(userRole);
-  const isCommuneRole   = userRole === USER_ROLES.COMMUNE;
+  const isCommuneRole   = [USER_ROLES.COMMUNE, USER_ROLES.ADMIN].includes(userRole);
 
   return (
     <Tab.Navigator
