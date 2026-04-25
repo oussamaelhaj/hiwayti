@@ -59,17 +59,21 @@ async function requireAdmin(req, res, next) {
 
 // ─── ROUTES ────────────────────────────────────────────────────────────────
 // Load route modules
-const googleAuthRoutes = require('./src/routes/googleAuthRoutes');
-const roleRoutes       = require('./src/routes/roleRoutes');
-const stripeRoutes     = require('./src/routes/stripeRoutes');
-const analyticsRoutes  = require('./src/routes/analyticsRoutes');
-const notifRoutes      = require('./src/routes/notificationRoutes');
+const googleAuthRoutes    = require('./src/routes/googleAuthRoutes');
+const roleRoutes          = require('./src/routes/roleRoutes');
+const stripeRoutes        = require('./src/routes/stripeRoutes');
+const analyticsRoutes     = require('./src/routes/analyticsRoutes');
+const notifRoutes         = require('./src/routes/notificationRoutes');
+const activitiesRoutes    = require('./src/routes/activitiesRoutes');
+const placesRoutes        = require('./src/routes/placesRoutes');
 
-app.use('/api/auth/google', googleAuthRoutes);
-app.use('/api/roles',       roleRoutes);
-app.use('/api/payments',    stripeRoutes);
-app.use('/api/analytics',   analyticsRoutes);
+app.use('/api/auth/google',   googleAuthRoutes);
+app.use('/api/roles',         roleRoutes);
+app.use('/api/payments',      stripeRoutes);
+app.use('/api/analytics',     analyticsRoutes);
 app.use('/api/notifications', notifRoutes);
+app.use('/api/activities',    activitiesRoutes);
+app.use('/api/places',        placesRoutes);
 
 // ─── PROVIDER VERIFICATION (Admin only) ───────────────────────────────────
 app.patch('/api/providers/:id/verify', requireAdmin, async (req, res) => {

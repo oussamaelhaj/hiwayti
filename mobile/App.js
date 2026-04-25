@@ -28,9 +28,10 @@ import ProductDetailScreen     from './src/screens/ProductDetailScreen';
 import BookingScreen           from './src/screens/BookingScreen';
 import ProfileScreen           from './src/screens/ProfileScreen';
 import ProviderDetailScreen    from './src/screens/ProviderDetailScreen';
-import ProviderDashboardScreen from './src/screens/ProviderDashboardScreen';
-import CommuneDashboardScreen  from './src/screens/CommuneDashboardScreen';
-import NotificationsScreen     from './src/screens/NotificationsScreen';
+import ProviderDashboardScreen   from './src/screens/ProviderDashboardScreen';
+import CommuneDashboardScreen    from './src/screens/CommuneDashboardScreen';
+import NotificationsScreen       from './src/screens/NotificationsScreen';
+import ProviderActivitiesScreen  from './src/screens/ProviderActivitiesScreen';
 
 // ── Navigators ────────────────────────────────────────────────────────────────
 const Tab   = createBottomTabNavigator();
@@ -133,9 +134,10 @@ function BookingStack() {
 function ProfileStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="ProfileMain"        component={ProfileScreen} />
-      <Stack.Screen name="ProviderDashboard"  component={ProviderDashboardScreen} />
-      <Stack.Screen name="CommuneDashboard"   component={CommuneDashboardScreen} />
+      <Stack.Screen name="ProfileMain"           component={ProfileScreen} />
+      <Stack.Screen name="ProviderDashboard"     component={ProviderDashboardScreen} />
+      <Stack.Screen name="ProviderActivities"    component={ProviderActivitiesScreen} options={{ presentation: 'modal' }} />
+      <Stack.Screen name="CommuneDashboard"      component={CommuneDashboardScreen} />
     </Stack.Navigator>
   );
 }

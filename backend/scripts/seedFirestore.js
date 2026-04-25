@@ -322,29 +322,250 @@ const communes = [
   }
 ];
 
+// ─── ACTIVITIES SEED DATA ─────────────────────────────────────────────────────
+const activities = [
+  {
+    id: 'act_surf_debutant_asilah',
+    name: 'Cours de Surf Débutants',
+    providerId: 'provider_surf_asilah',
+    communeId: 'commune_asilah',
+    placeId: 'place_asilah_beach',
+    category: 'surf',
+    type: 'course',
+    price: 350,
+    priceUnit: 'personne',
+    duration: '2h',
+    minParticipants: 1,
+    maxParticipants: 6,
+    difficulty: 'Débutant',
+    languages: ['Français', 'English', 'العربية'],
+    description: 'Cours complet pour débutants : théorie, sécurité, pratique en eau calme puis vagues.',
+    included: ['Combinaison', 'Planche', 'Instructeur certifié ISA', 'Assurance'],
+    excluded: ['Transport', 'Repas'],
+    requirements: ['Savoir nager', 'Minimum 8 ans'],
+    meetingPoint: 'Parking de la plage Asilah Nord',
+    active: true,
+    bookingCount: 142,
+    rating: 4.8,
+    reviewCount: 87,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  },
+  {
+    id: 'act_surf_advanced_asilah',
+    name: 'Session Surf Avancé',
+    providerId: 'provider_surf_asilah',
+    communeId: 'commune_asilah',
+    placeId: 'place_asilah_beach',
+    category: 'surf',
+    type: 'session',
+    price: 250,
+    priceUnit: 'personne',
+    duration: '3h',
+    minParticipants: 1,
+    maxParticipants: 4,
+    difficulty: 'Avancé',
+    languages: ['Français', 'English'],
+    description: 'Session libre avec analyse vidéo. Accès aux spots secrets d\'Asilah.',
+    included: ['Planche longboard ou shortboard au choix', 'Analyse vidéo'],
+    excluded: ['Combinaison (location disponible)'],
+    requirements: ['Niveau intermédiaire minimum', 'Maîtrise du take-off'],
+    active: true,
+    bookingCount: 89,
+    rating: 4.9,
+    reviewCount: 54,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  },
+  {
+    id: 'act_padel_lesson_marrakech',
+    name: 'Cours de Padel — Initiation',
+    providerId: 'provider_padel_marrakech',
+    communeId: 'commune_marrakech',
+    placeId: 'place_marrakech_padel',
+    category: 'padel',
+    type: 'course',
+    price: 280,
+    priceUnit: 'heure',
+    duration: '1h30',
+    minParticipants: 2,
+    maxParticipants: 4,
+    difficulty: 'Débutant',
+    languages: ['Français', 'العربية', 'English'],
+    description: 'Leçon d\'initiation au padel avec coach certifié FRP.',
+    included: ['Court', 'Raquettes', 'Balles', 'Coach'],
+    excluded: ['Eau', 'Serviette'],
+    active: true,
+    bookingCount: 215,
+    rating: 4.7,
+    reviewCount: 89,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  },
+  {
+    id: 'act_trek_toubkal_imlil',
+    name: 'Ascension Jbel Toubkal',
+    providerId: 'provider_hiking_atlas',
+    communeId: 'commune_imlil',
+    placeId: 'place_imlil_trailhead',
+    category: 'hiking',
+    type: 'tour',
+    price: 900,
+    priceUnit: 'personne',
+    duration: '2 jours',
+    minParticipants: 2,
+    maxParticipants: 8,
+    difficulty: 'Avancé',
+    languages: ['Français', 'English', 'Español'],
+    description: 'Ascension du plus haut sommet d\'Afrique du Nord (4167m). Nuitée au refuge Toubkal.',
+    included: ['Guide certifié', 'Mule pour bagages', 'Nuitée refuge', 'Repas du soir et petit-déjeuner'],
+    excluded: ['Équipement personnel', 'Assurance trek'],
+    requirements: ['Bonne condition physique', 'Expérience randonnée', 'Équipement montagne'],
+    meetingPoint: 'Village d\'Imlil, Place principale',
+    active: true,
+    bookingCount: 456,
+    rating: 4.9,
+    reviewCount: 204,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  },
+  {
+    id: 'act_pottery_workshop_fes',
+    name: 'Atelier Poterie Traditionnelle',
+    providerId: 'artisan_pottery_fes',
+    communeId: 'commune_fes',
+    placeId: 'place_fes_medina',
+    category: 'pottery',
+    type: 'workshop',
+    price: 200,
+    priceUnit: 'personne',
+    duration: '3h',
+    minParticipants: 1,
+    maxParticipants: 6,
+    difficulty: 'Débutant',
+    languages: ['Français', 'English', 'العربية'],
+    description: 'Façonnage, décoration zellige et khabia. Cuisson au four traditionnel. Pièce repartie avec vous.',
+    included: ['Matériaux', 'Tablier', 'Thé à la menthe', 'Pièce réalisée'],
+    excluded: ['Transport depuis la ville nouvelle'],
+    meetingPoint: 'Riad Maître Hassan, Rue Chouara, Médina de Fès',
+    active: true,
+    bookingCount: 198,
+    rating: 4.9,
+    reviewCount: 312,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  },
+];
+
+// ─── PLACES SEED DATA ─────────────────────────────────────────────────────────
+const places = [
+  {
+    id: 'place_asilah_beach',
+    name: 'Plage d\'Asilah',
+    communeId: 'commune_asilah',
+    region: 'Tanger-Tétouan-Al Hoceïma',
+    category: 'surf',
+    description: 'Plage de sable fin, vagues idéales pour le surf, eaux claires.',
+    location: new admin.firestore.GeoPoint(35.4650, -6.0340),
+    coverImage: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800',
+    visitorCount: 0,
+    activitiesCount: 2,
+    providersCount: 1,
+  },
+  {
+    id: 'place_marrakech_padel',
+    name: 'Palmeraie Tennis & Padel',
+    communeId: 'commune_marrakech',
+    region: 'Marrakech-Safi',
+    category: 'padel',
+    description: '6 courts de padel premium en plein air, éclairés.',
+    location: new admin.firestore.GeoPoint(31.6295, -7.9811),
+    coverImage: 'https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=800',
+    visitorCount: 0,
+    activitiesCount: 1,
+    providersCount: 1,
+  },
+  {
+    id: 'place_imlil_trailhead',
+    name: 'Départ Imlil — Toubkal',
+    communeId: 'commune_imlil',
+    region: 'Marrakech-Safi',
+    category: 'hiking',
+    description: 'Point de départ officiel pour l\'ascension du Jbel Toubkal.',
+    location: new admin.firestore.GeoPoint(31.1357, -7.9190),
+    coverImage: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800',
+    visitorCount: 0,
+    activitiesCount: 1,
+    providersCount: 1,
+  },
+  {
+    id: 'place_fes_medina',
+    name: 'Médina de Fès — Quartier Artisanal',
+    communeId: 'commune_fes',
+    region: 'Fès-Meknès',
+    category: 'pottery',
+    description: 'Le cœur artisanal de la médina de Fès, classée UNESCO.',
+    location: new admin.firestore.GeoPoint(34.0525, -4.9998),
+    coverImage: 'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=800',
+    visitorCount: 0,
+    activitiesCount: 1,
+    providersCount: 1,
+  },
+  {
+    id: 'place_essaouira_kite',
+    name: 'Spot Kitesurf Essaouira',
+    communeId: 'commune_essaouira',
+    region: 'Marrakech-Safi',
+    category: 'surf',
+    description: 'Spot mondial de kitesurf, vent constant de l\'Alizé.',
+    location: new admin.firestore.GeoPoint(31.5085, -9.7595),
+    coverImage: 'https://images.unsplash.com/photo-1587395015842-8356cc5b36bd?w=800',
+    visitorCount: 0,
+    activitiesCount: 0,
+    providersCount: 0,
+  },
+  {
+    id: 'place_dakhla_lagoon',
+    name: 'Lagune de Dakhla',
+    communeId: 'commune_dakhla',
+    region: 'Dakhla-Oued Ed-Dahab',
+    category: 'surf',
+    description: 'Lagune turquoise, spot mondial de windsurf et kitesurf.',
+    location: new admin.firestore.GeoPoint(23.7145, -15.9388),
+    coverImage: 'https://images.unsplash.com/photo-1594589255676-e1e7fbcb8e13?w=800',
+    visitorCount: 0,
+    activitiesCount: 0,
+    providersCount: 0,
+  },
+];
+
 // ─── RUN SEED ─────────────────────────────────────────────────────────────────
 async function seed() {
   console.log('🌍 Seeding HIWAYTI Firestore...');
-  const batch = db.batch();
 
-  providers.forEach(p => {
-    const { id, ...data } = p;
-    batch.set(db.collection('providers').doc(id), data);
-  });
+  // Firestore batch has 500-write limit; split into chunks
+  const allWrites = [
+    ...providers.map(p => ({ col: 'providers', ...p })),
+    ...products.map(p => ({ col: 'products', ...p })),
+    ...communes.map(c => ({ col: 'communes', ...c })),
+    ...activities.map(a => ({ col: 'activities', ...a })),
+    ...places.map(p => ({ col: 'places', ...p })),
+  ];
 
-  products.forEach(p => {
-    const { id, ...data } = p;
-    batch.set(db.collection('products').doc(id), data);
-  });
+  const CHUNK_SIZE = 400;
+  for (let i = 0; i < allWrites.length; i += CHUNK_SIZE) {
+    const chunk = allWrites.slice(i, i + CHUNK_SIZE);
+    const batch = db.batch();
+    chunk.forEach(({ col, id, ...data }) => {
+      batch.set(db.collection(col).doc(id), data);
+    });
+    await batch.commit();
+    console.log(`   ✅ Batch ${Math.floor(i / CHUNK_SIZE) + 1} committed (${chunk.length} docs)`);
+  }
 
-  communes.forEach(c => {
-    const { id, ...data } = c;
-    batch.set(db.collection('communes').doc(id), data);
-  });
-
-  await batch.commit();
-  console.log(`✅ Seeded: ${providers.length} providers, ${products.length} products, ${communes.length} communes`);
+  console.log(`\n✅ Seed complete:`);
+  console.log(`   • ${providers.length} providers`);
+  console.log(`   • ${products.length} products`);
+  console.log(`   • ${communes.length} communes`);
+  console.log(`   • ${activities.length} activities`);
+  console.log(`   • ${places.length} places`);
   process.exit(0);
 }
 
 seed().catch(err => { console.error('❌ Seed failed:', err); process.exit(1); });
+

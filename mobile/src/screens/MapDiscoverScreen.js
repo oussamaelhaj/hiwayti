@@ -1,20 +1,24 @@
 /**
- * MapDiscoverScreen.js — Interactive Map with provider pins & filters
+ * MapDiscoverScreen.js v2 — Interactive Map
+ * Fixed clustering, real provider pins, activity overlay, proper stats
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, FlatList,
   Dimensions, Animated, TextInput, StatusBar,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE, Callout } from 'react-native-maps';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useTranslation } from 'react-i18next';
 import { colors, spacing, radius, typography, CATEGORIES } from '../utils/theme';
-import { haptic, formatDistance } from '../utils/helpers';
-import { fetchNearbyProviders, fetchProvidersByCategory } from '../services/api';
+import { haptic, formatDistance, formatPrice } from '../utils/helpers';
+import {
+  fetchNearbyProviders, fetchProvidersByCategory,
+  fetchActivitiesByCategory,
+} from '../services/api';
 import ProviderCard from '../components/cards/ProviderCard';
 import { ProviderCardSkeleton } from '../components/ui/SkeletonLoader';
 
@@ -31,41 +35,52 @@ export default function MapDiscoverScreen({ navigation }) {
   const { t } = useTranslation();
   const mapRef = useRef(null);
 
-  const [location, setLocation] = useState(null);
-  const [providers, setProviders] = useState([]);
+  const [location, setLocation]               = useState(null);
+  const [providers, setProviders]             = useState([]);
   const [selectedProvider, setSelectedProvider] = useState(null);
-  const [activeCategory, setActiveCategory] = useState(null);
-  const [searchText, setSearchText] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [showList, setShowList] = useState(false);
+  const [activeCategory, setActiveCategory]   = useState(null);
+  const [searchText, setSearchText]           = useState('');
+  const [loading, setLoading]                 = useState(false);
+  const [showList, setShowList]               = useState(false);
+  const [mapReady, setMapReady]               = useState(false);
 
-  const listAnim = useRef(new Animated.Value(0)).current;
   const cardAnim = useRef(new Animated.Value(300)).current;
 
+  // ── Location + initial load ──
   useEffect(() => {
     (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status === 'granted') {
-        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        setLocation(loc);
-        mapRef.current?.animateToRegion({
-          latitude: loc.coords.latitude,
-          longitude: loc.coords.longitude,
-          latitudeDelta: 0.5,
-          longitudeDelta: 0.5,
-        }, 1000);
-        loadNearby(loc);
-      } else {
-        loadAll();
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          setLocation(loc);
+          await loadNearby(loc);
+        } else {
+          await loadAll();
+        }
+      } catch (e) {
+        await loadAll();
       }
     })();
   }, []);
+
+  // Animate map to user location once mapReady
+  useEffect(() => {
+    if (mapReady && location) {
+      mapRef.current?.animateToRegion({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        latitudeDelta: 0.5,
+        longitudeDelta: 0.5,
+      }, 1000);
+    }
+  }, [mapReady, location]);
 
   const loadNearby = async (loc) => {
     setLoading(true);
     try {
       const data = await fetchNearbyProviders(loc.coords.latitude, loc.coords.longitude, 100);
-      setProviders(data);
+      setProviders(data.filter(p => p.location));
     } catch (e) { console.warn('[MAP]', e.message); }
     setLoading(false);
   };
@@ -74,7 +89,7 @@ export default function MapDiscoverScreen({ navigation }) {
     setLoading(true);
     try {
       const data = await fetchNearbyProviders(31.7917, -7.0926, 2000);
-      setProviders(data);
+      setProviders(data.filter(p => p.location));
     } catch (e) { console.warn('[MAP]', e.message); }
     setLoading(false);
   };
@@ -82,26 +97,30 @@ export default function MapDiscoverScreen({ navigation }) {
   const filterByCategory = useCallback(async (cat) => {
     haptic.select();
     setActiveCategory(cat);
+    setSelectedProvider(null);
     setLoading(true);
     try {
-      const data = cat ? await fetchProvidersByCategory(cat, 50) : await loadAll();
-      if (cat) setProviders(data || []);
+      if (cat) {
+        const data = await fetchProvidersByCategory(cat, 100);
+        setProviders(data.filter(p => p.location));
+      } else {
+        if (location) await loadNearby(location);
+        else await loadAll();
+      }
     } catch (e) { console.warn('[MAP]', e.message); }
     setLoading(false);
-  }, []);
+  }, [location]);
 
   const selectProvider = (provider) => {
     haptic.light();
     setSelectedProvider(provider);
     Animated.spring(cardAnim, { toValue: 0, useNativeDriver: true, friction: 8 }).start();
-    if (provider.location) {
-      mapRef.current?.animateToRegion({
-        latitude: provider.location.latitude,
-        longitude: provider.location.longitude,
-        latitudeDelta: 0.05,
-        longitudeDelta: 0.05,
-      }, 600);
-    }
+    mapRef.current?.animateToRegion({
+      latitude: provider.location.latitude,
+      longitude: provider.location.longitude,
+      latitudeDelta: 0.05,
+      longitudeDelta: 0.05,
+    }, 600);
   };
 
   const dismissCard = () => {
@@ -112,13 +131,16 @@ export default function MapDiscoverScreen({ navigation }) {
 
   const filteredProviders = providers.filter(p => {
     if (!searchText) return true;
+    const q = searchText.toLowerCase();
     return (
-      p.name?.toLowerCase().includes(searchText.toLowerCase()) ||
-      p.commune?.toLowerCase().includes(searchText.toLowerCase())
+      p.name?.toLowerCase().includes(q) ||
+      p.commune?.toLowerCase().includes(q) ||
+      p.category?.toLowerCase().includes(q)
     );
   });
 
-  const getCategoryColor = (cat) => colors[cat] || colors.gold;
+  const getCatColor = (cat) => colors[cat] || colors.gold;
+  const getCatEmoji = (cat) => CATEGORIES.find(c => c.id === cat)?.emoji || '📍';
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -133,20 +155,24 @@ export default function MapDiscoverScreen({ navigation }) {
         customMapStyle={darkMapStyle}
         showsUserLocation
         showsMyLocationButton={false}
+        onMapReady={() => setMapReady(true)}
+        onPress={() => selectedProvider && dismissCard()}
       >
         {filteredProviders.map(p => {
-          if (!p.location) return null;
-          const catColor = getCategoryColor(p.category);
+          const catColor = getCatColor(p.category);
+          const isSelected = selectedProvider?.id === p.id;
           return (
             <Marker
               key={p.id}
               coordinate={{ latitude: p.location.latitude, longitude: p.location.longitude }}
               onPress={() => selectProvider(p)}
             >
-              <View style={[styles.pin, { backgroundColor: catColor, borderColor: selectedProvider?.id === p.id ? '#fff' : catColor }]}>
-                <Text style={styles.pinEmoji}>
-                  {CATEGORIES.find(c => c.id === p.category)?.emoji || '📍'}
-                </Text>
+              <View style={[
+                styles.pin,
+                { backgroundColor: catColor, borderColor: isSelected ? '#fff' : catColor },
+                isSelected && styles.pinSelected,
+              ]}>
+                <Text style={styles.pinEmoji}>{getCatEmoji(p.category)}</Text>
               </View>
             </Marker>
           );
@@ -159,7 +185,7 @@ export default function MapDiscoverScreen({ navigation }) {
           <Ionicons name="search" size={18} color={colors.textMuted} />
           <TextInput
             style={styles.searchInput}
-            placeholder={t('map.searchPlaceholder')}
+            placeholder="Rechercher lieu, activité, prestataire..."
             placeholderTextColor={colors.textMuted}
             value={searchText}
             onChangeText={setSearchText}
@@ -182,7 +208,7 @@ export default function MapDiscoverScreen({ navigation }) {
             const active = activeCategory === item.id;
             return (
               <TouchableOpacity
-                style={[styles.filterPill, { borderColor: item.color + '55' }, active && { backgroundColor: item.color }]}
+                style={[styles.filterPill, { borderColor: (item.color || colors.gold) + '55' }, active && { backgroundColor: item.color || colors.gold }]}
                 onPress={() => filterByCategory(item.id)}
               >
                 <Text style={styles.filterEmoji}>{item.emoji}</Text>
@@ -193,12 +219,17 @@ export default function MapDiscoverScreen({ navigation }) {
         />
       </View>
 
-      {/* RESULTS COUNT */}
+      {/* COUNT BADGE */}
       <View style={styles.countBadge}>
         <BlurView tint="dark" intensity={80} style={styles.countBlur}>
-          <Text style={styles.countText}>
-            {filteredProviders.length} {t('map.resultsFound')}
-          </Text>
+          {loading ? (
+            <Text style={styles.countText}>Chargement…</Text>
+          ) : (
+            <Text style={styles.countText}>
+              {filteredProviders.length} prestataire{filteredProviders.length !== 1 ? 's' : ''}
+              {activeCategory ? ` · ${CATEGORIES.find(c => c.id === activeCategory)?.labelFr}` : ''}
+            </Text>
+          )}
         </BlurView>
       </View>
 
@@ -212,7 +243,7 @@ export default function MapDiscoverScreen({ navigation }) {
         </BlurView>
       </TouchableOpacity>
 
-      {/* MY LOCATION BUTTON */}
+      {/* MY LOCATION */}
       {location && (
         <TouchableOpacity
           style={styles.myLocBtn}
@@ -251,11 +282,15 @@ export default function MapDiscoverScreen({ navigation }) {
         </Animated.View>
       )}
 
-      {/* LIST VIEW OVERLAY */}
+      {/* LIST OVERLAY */}
       {showList && (
         <View style={styles.listOverlay}>
           <BlurView tint="dark" intensity={95} style={styles.listBlur}>
-            <Text style={styles.listTitle}>Prestataires ({filteredProviders.length})</Text>
+            <View style={styles.listHandle} />
+            <Text style={styles.listTitle}>
+              Prestataires ({filteredProviders.length})
+              {activeCategory ? ` — ${CATEGORIES.find(c => c.id === activeCategory)?.labelFr}` : ''}
+            </Text>
             <FlatList
               data={filteredProviders}
               keyExtractor={i => i.id}
@@ -271,7 +306,7 @@ export default function MapDiscoverScreen({ navigation }) {
               showsVerticalScrollIndicator={false}
               ListEmptyComponent={
                 <Text style={{ color: colors.textMuted, textAlign: 'center', marginTop: spacing.xl }}>
-                  {t('common.noResults')}
+                  {loading ? 'Chargement…' : 'Aucun résultat'}
                 </Text>
               }
             />
@@ -307,25 +342,28 @@ const styles = StyleSheet.create({
   pin: {
     width: 36, height: 36, borderRadius: 18,
     borderWidth: 2, alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4, shadowRadius: 4, elevation: 6,
   },
+  pinSelected: { width: 44, height: 44, borderRadius: 22, borderWidth: 3 },
   pinEmoji: { fontSize: 16 },
 
   countBadge: {
-    position: 'absolute', bottom: 200, alignSelf: 'center',
+    position: 'absolute', bottom: 210, alignSelf: 'center',
     borderRadius: radius.full, overflow: 'hidden',
   },
   countBlur: { paddingVertical: 6, paddingHorizontal: 14 },
   countText: { ...typography.captionBold, color: colors.gold },
 
   listToggle: {
-    position: 'absolute', bottom: 140, right: spacing.lg,
+    position: 'absolute', bottom: 145, right: spacing.lg,
     borderRadius: radius.full, overflow: 'hidden',
     borderWidth: 1, borderColor: colors.goldBorder,
   },
   listToggleBlur: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
 
   myLocBtn: {
-    position: 'absolute', bottom: 200, right: spacing.lg,
+    position: 'absolute', bottom: 205, right: spacing.lg,
     borderRadius: radius.full, overflow: 'hidden',
     borderWidth: 1, borderColor: 'rgba(29,214,195,0.3)',
   },
@@ -347,12 +385,15 @@ const styles = StyleSheet.create({
   listBlur: {
     flex: 1, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl,
     borderTopWidth: 1, borderColor: colors.goldBorder,
-    paddingTop: spacing.lg, paddingHorizontal: spacing.md,
+    paddingTop: spacing.md, paddingHorizontal: spacing.md,
+  },
+  listHandle: {
+    width: 36, height: 4, borderRadius: 2,
+    backgroundColor: colors.textMuted, alignSelf: 'center', marginBottom: spacing.md,
   },
   listTitle: { ...typography.h3, color: colors.textPrimary, marginBottom: spacing.md },
 });
 
-// Google Maps dark style
 const darkMapStyle = [
   { elementType: 'geometry', stylers: [{ color: '#0e0e1c' }] },
   { elementType: 'labels.text.fill', stylers: [{ color: '#8888aa' }] },

@@ -1,6 +1,6 @@
 /**
- * HomeScreen.js — HIWAYTI Main Marketplace Home
- * Featured experiences, nearby, top artisans, AI recommendations
+ * HomeScreen.js — HIWAYTI Main Marketplace Home v2
+ * Real stats from Firestore, improved category/commune/activity linking
  */
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
@@ -16,7 +16,8 @@ import { colors, spacing, radius, typography, CATEGORIES, gradients, shadow } fr
 import { haptic, formatDistance } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 import {
-  fetchFeaturedProviders, fetchTopArtisans, fetchNearbyProviders, fetchAllCommunes
+  fetchFeaturedProviders, fetchTopArtisans, fetchNearbyProviders,
+  fetchAllCommunes, fetchPlatformStats, fetchActivitiesByCategory,
 } from '../services/api';
 import { getAIRecommendations } from '../services/aiEngine';
 import ProviderCard from '../components/cards/ProviderCard';
@@ -34,24 +35,28 @@ export default function HomeScreen({ navigation }) {
   const [artisans, setArtisans] = useState([]);
   const [aiRecs, setAiRecs] = useState([]);
   const [communesList, setCommunesList] = useState([]);
+  const [platformStats, setPlatformStats] = useState({ providers: 0, communes: 0, activities: 0, bookings: 0 });
   const [location, setLocation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeCategory, setActiveCategory] = useState(null);
+  const [trendingActivities, setTrendingActivities] = useState([]);
 
   const scrollY = useRef(new Animated.Value(0)).current;
   const headerOpacity = scrollY.interpolate({ inputRange: [0, 100], outputRange: [0, 1], extrapolate: 'clamp' });
 
   const loadData = useCallback(async (loc = location) => {
     try {
-      const [feat, arts, comms] = await Promise.all([
+      const [feat, arts, comms, stats] = await Promise.all([
         fetchFeaturedProviders(6),
         fetchTopArtisans(6),
         fetchAllCommunes(10),
+        fetchPlatformStats(),
       ]);
       setFeatured(feat);
       setArtisans(arts);
       setCommunesList(comms);
+      setPlatformStats(stats);
 
       if (loc) {
         const near = await fetchNearbyProviders(loc.coords.latitude, loc.coords.longitude, 50);
@@ -59,13 +64,25 @@ export default function HomeScreen({ navigation }) {
         const recs = await getAIRecommendations({}, { latitude: loc.coords.latitude, longitude: loc.coords.longitude }, 6);
         setAiRecs(recs);
       }
+
+      // Load trending activities
+      if (activeCategory) {
+        const acts = await fetchActivitiesByCategory(activeCategory, 6);
+        setTrendingActivities(acts);
+      } else {
+        const acts = await fetchActivitiesByCategory('surf', 3)
+          .catch(() => []);
+        const acts2 = await fetchActivitiesByCategory('padel', 3)
+          .catch(() => []);
+        setTrendingActivities([...acts, ...acts2]);
+      }
     } catch (e) {
       console.warn('[HOME] Load error:', e.message);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [location]);
+  }, [location, activeCategory]);
 
   useEffect(() => {
     (async () => {
@@ -86,6 +103,11 @@ export default function HomeScreen({ navigation }) {
     loadData();
   };
 
+  const onCategoryPress = useCallback(async (catId) => {
+    haptic.select();
+    setActiveCategory(catId === activeCategory ? null : catId);
+  }, [activeCategory]);
+
   const greeting = () => {
     const h = new Date().getHours();
     if (h < 12) return 'Bonjour';
@@ -97,10 +119,16 @@ export default function HomeScreen({ navigation }) {
     navigation.navigate('ProviderDetail', { provider });
   };
 
+  // Format stat number nicely
+  const formatStat = (n) => {
+    if (n >= 1000) return `${(n / 1000).toFixed(1)}k+`;
+    return n > 0 ? `${n}+` : '…';
+  };
+
   // ── Section header ──
-  const SectionHeader = ({ titleKey, onSeeAll }) => (
+  const SectionHeader = ({ titleKey, title, onSeeAll }) => (
     <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{t(titleKey)}</Text>
+      <Text style={styles.sectionTitle}>{title || t(titleKey)}</Text>
       {onSeeAll && (
         <TouchableOpacity onPress={onSeeAll}>
           <Text style={styles.seeAll}>{t('common.seeAll')}</Text>
@@ -135,7 +163,7 @@ export default function HomeScreen({ navigation }) {
             <View>
               <Text style={styles.heroGreeting}>{greeting()}, {user?.displayName?.split(' ')[0] || 'Explorateur'} 👋</Text>
               <Text style={styles.heroTitle}>Découvrez{'\n'}le Maroc Authentique</Text>
-              <Text style={styles.heroSub}>1 503 communes • Sports & Artisanat</Text>
+              <Text style={styles.heroSub}>Sports • Artisanat • Culture</Text>
             </View>
             <TouchableOpacity
               style={styles.notifBtn}
@@ -145,13 +173,13 @@ export default function HomeScreen({ navigation }) {
             </TouchableOpacity>
           </View>
 
-          {/* Stats strip */}
+          {/* Real Stats strip */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statsStrip}>
             {[
-              { label: 'Prestataires', value: '2.4k+', icon: 'business-outline', color: colors.gold },
-              { label: 'Communes', value: '1 503', icon: 'map-outline', color: colors.accent },
-              { label: 'Artisans', value: '800+', icon: 'color-palette-outline', color: colors.goldLight },
-              { label: 'Activités', value: '50+', icon: 'tennisball-outline', color: colors.success },
+              { label: 'Prestataires', value: formatStat(platformStats.providers), icon: 'business-outline', color: colors.gold },
+              { label: 'Communes', value: platformStats.communes > 0 ? `${platformStats.communes}` : '1 503', icon: 'map-outline', color: colors.accent },
+              { label: 'Activités', value: formatStat(platformStats.activities), icon: 'tennisball-outline', color: colors.success },
+              { label: 'Réservations', value: formatStat(platformStats.bookings), icon: 'calendar-outline', color: colors.goldLight },
             ].map((s, i) => (
               <GlassCard key={i} style={styles.statCard} noBlur>
                 <Ionicons name={s.icon} size={18} color={s.color} />
@@ -167,7 +195,7 @@ export default function HomeScreen({ navigation }) {
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catScroll}>
             <TouchableOpacity
               style={[styles.catPill, !activeCategory && styles.catPillActive]}
-              onPress={() => { haptic.select(); setActiveCategory(null); }}
+              onPress={() => onCategoryPress(null)}
             >
               <Text style={[styles.catText, !activeCategory && { color: colors.bg }]}>Tous</Text>
             </TouchableOpacity>
@@ -177,7 +205,7 @@ export default function HomeScreen({ navigation }) {
                 <TouchableOpacity
                   key={cat.id}
                   style={[styles.catPill, { borderColor: cat.color + '55' }, active && { backgroundColor: cat.color }]}
-                  onPress={() => { haptic.select(); setActiveCategory(active ? null : cat.id); }}
+                  onPress={() => onCategoryPress(cat.id)}
                 >
                   <Text style={styles.catEmoji}>{cat.emoji}</Text>
                   <Text style={[styles.catText, active && { color: colors.bg }]}>{cat.labelFr}</Text>
@@ -188,26 +216,33 @@ export default function HomeScreen({ navigation }) {
         </View>
 
         {/* ── POPULAR DESTINATIONS (COMMUNES) ─── */}
-        <SectionHeader titleKey="home.destinations" onSeeAll={() => navigation.navigate('Discover')} />
+        <SectionHeader title="Destinations Populaires" onSeeAll={() => navigation.navigate('Discover')} />
         <FlatList
           data={communesList}
           horizontal
           renderItem={({ item }) => (
-            <TouchableOpacity style={styles.communeCard} onPress={() => {}}>
-              <Image source={{ uri: item.coverImage || 'https://images.unsplash.com/photo-1539020140153-e479b8c22e70' }} style={styles.communeImage} />
-              <View style={styles.communeOverlay}>
+            <TouchableOpacity
+              style={styles.communeCard}
+              onPress={() => navigation.navigate('Discover', { communeId: item.id })}
+            >
+              <Image
+                source={{ uri: item.coverImage || `https://images.unsplash.com/photo-1539020140153-e479b8c22e70?w=300` }}
+                style={styles.communeImage}
+              />
+              <LinearGradient colors={['transparent', 'rgba(6,6,14,0.9)']} style={styles.communeOverlay}>
                 <Text style={styles.communeName}>{item.name}</Text>
-              </View>
+                {item.region && <Text style={styles.communeRegion}>{item.region}</Text>}
+              </LinearGradient>
             </TouchableOpacity>
           )}
           keyExtractor={i => i.id}
-          contentContainerStyle={{ paddingHorizontal: spacing.lg }}
+          contentContainerStyle={{ paddingHorizontal: spacing.lg, gap: spacing.sm }}
           showsHorizontalScrollIndicator={false}
           ListEmptyComponent={loading ? <ProviderCardSkeleton /> : <EmptyBlock message="Aucune destination trouvée" />}
         />
 
         {/* ── FEATURED EXPERIENCES ─── */}
-        <SectionHeader titleKey="home.featured" onSeeAll={() => navigation.navigate('Discover')} />
+        <SectionHeader title="Expériences à la Une" onSeeAll={() => navigation.navigate('Discover')} />
         {loading ? (
           <FlatList
             data={[1, 2, 3]}
@@ -219,7 +254,7 @@ export default function HomeScreen({ navigation }) {
           />
         ) : (
           <FlatList
-            data={featured}
+            data={featured.filter(p => !activeCategory || p.category === activeCategory)}
             horizontal
             renderItem={({ item }) => (
               <ProviderCard provider={item} onPress={() => navigateToProvider(item)} />
@@ -231,12 +266,45 @@ export default function HomeScreen({ navigation }) {
           />
         )}
 
+        {/* ── TRENDING ACTIVITIES ─── */}
+        {trendingActivities.length > 0 && (
+          <>
+            <SectionHeader
+              title={activeCategory
+                ? `Activités · ${CATEGORIES.find(c => c.id === activeCategory)?.labelFr}`
+                : 'Activités Tendances'}
+              onSeeAll={() => navigation.navigate('Discover')}
+            />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: spacing.lg, gap: spacing.md }}>
+              {trendingActivities.map(act => (
+                <TouchableOpacity
+                  key={act.id}
+                  style={styles.activityCard}
+                  onPress={() => navigation.navigate('ProviderDetail', { provider: { id: act.providerId, ...act } })}
+                >
+                  <View style={[styles.activityIconBg, { backgroundColor: (colors[act.category] || colors.gold) + '22' }]}>
+                    <Text style={{ fontSize: 28 }}>
+                      {CATEGORIES.find(c => c.id === act.category)?.emoji || '🎯'}
+                    </Text>
+                  </View>
+                  <Text style={styles.activityName} numberOfLines={2}>{act.name}</Text>
+                  <Text style={styles.activityPrice}>{act.price ? `${act.price} MAD` : 'Sur devis'}</Text>
+                  <View style={styles.activityMeta}>
+                    <Ionicons name="time-outline" size={11} color={colors.textMuted} />
+                    <Text style={styles.activityDuration}>{act.duration || '—'}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </>
+        )}
+
         {/* ── NEAR YOU ─── */}
         {nearby.length > 0 && (
           <>
-            <SectionHeader titleKey="home.nearby" onSeeAll={() => navigation.navigate('MapDiscover')} />
+            <SectionHeader title="Près de Vous" onSeeAll={() => navigation.navigate('MapTab')} />
             <FlatList
-              data={nearby}
+              data={nearby.filter(p => !activeCategory || p.category === activeCategory)}
               horizontal
               renderItem={({ item }) => (
                 <ProviderCard provider={item} showDistance onPress={() => navigateToProvider(item)} />
@@ -244,12 +312,13 @@ export default function HomeScreen({ navigation }) {
               keyExtractor={i => i.id}
               contentContainerStyle={{ paddingHorizontal: spacing.lg }}
               showsHorizontalScrollIndicator={false}
+              ListEmptyComponent={<EmptyBlock message="Aucun prestataire à proximité" />}
             />
           </>
         )}
 
         {/* ── TOP ARTISANS ─── */}
-        <SectionHeader titleKey="home.topArtisans" onSeeAll={() => navigation.navigate('Shop')} />
+        <SectionHeader title="Top Artisans" onSeeAll={() => navigation.navigate('Shop')} />
         {loading ? (
           <FlatList
             data={[1, 2, 3]}
@@ -276,7 +345,7 @@ export default function HomeScreen({ navigation }) {
         {/* ── AI RECOMMENDATIONS ─── */}
         {aiRecs.length > 0 && (
           <>
-            <SectionHeader titleKey="home.recommended" />
+            <SectionHeader title="Recommandé pour vous" />
             <View style={styles.aiSection}>
               <View style={styles.aiBadge}>
                 <Ionicons name="sparkles" size={14} color={colors.gold} />
@@ -369,16 +438,35 @@ const styles = StyleSheet.create({
     width: 140, height: 180,
     borderRadius: radius.lg,
     overflow: 'hidden',
-    marginRight: spacing.md,
   },
   communeImage: { width: '100%', height: '100%', resizeMode: 'cover' },
   communeOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.3)',
     justifyContent: 'flex-end',
     padding: spacing.md,
   },
   communeName: { ...typography.h4, color: '#FFF' },
+  communeRegion: { ...typography.caption, color: 'rgba(255,255,255,0.65)', marginTop: 2 },
+
+  // Activity cards
+  activityCard: {
+    width: 140,
+    backgroundColor: colors.bgCard,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  activityIconBg: {
+    width: 52, height: 52, borderRadius: radius.md,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: spacing.xs,
+  },
+  activityName: { ...typography.bodyMd, color: colors.textPrimary, lineHeight: 18 },
+  activityPrice: { ...typography.captionBold, color: colors.gold },
+  activityMeta: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  activityDuration: { ...typography.caption, color: colors.textMuted },
 
   sectionHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',

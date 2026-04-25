@@ -1,6 +1,6 @@
 /**
  * LoginScreen.js — HIWAYTI Premium Authentication Screen
- * Email/Password + Google Sign-In
+ * Email/Password + Google Sign-In with Role Selection
  */
 import React, { useState, useRef } from 'react';
 import {
@@ -10,7 +10,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { colors, spacing, radius, typography, shadow } from '../utils/theme';
+import { colors, spacing, radius, typography, shadow, USER_ROLES } from '../utils/theme';
 import { haptic } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 import GoldButton from '../components/ui/GoldButton';
@@ -23,6 +23,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [role, setRole] = useState(USER_ROLES.TOURIST); // Default role
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -59,7 +60,7 @@ export default function LoginScreen() {
         haptic.success();
       } else if (mode === 'register') {
         if (!name.trim()) return Alert.alert('Nom requis');
-        await signUp(email.trim(), password, name.trim());
+        await signUp(email.trim(), password, name.trim(), role);
         haptic.success();
         Alert.alert('Compte créé !', 'Vérifiez votre email pour confirmer votre compte.');
       } else {
@@ -80,7 +81,7 @@ export default function LoginScreen() {
     setGoogleLoading(true);
     haptic.medium();
     try {
-      await signInWithGoogle();
+      await signInWithGoogle(); // Default role is Tourist from Google, can be changed later
       haptic.success();
     } catch (err) {
       haptic.error();
@@ -89,6 +90,12 @@ export default function LoginScreen() {
       setGoogleLoading(false);
     }
   };
+
+  const ROLES = [
+    { id: USER_ROLES.TOURIST, label: 'Passager', icon: 'map' },
+    { id: USER_ROLES.PROVIDER, label: 'Prestataire', icon: 'briefcase' },
+    { id: USER_ROLES.ADMIN, label: 'Admin', icon: 'shield' },
+  ];
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -118,6 +125,30 @@ export default function LoginScreen() {
           <Text style={styles.cardTitle}>
             {mode === 'login' ? t('auth.login') : mode === 'register' ? t('auth.register') : 'Mot de passe oublié'}
           </Text>
+
+          {/* Role Selection (register only) */}
+          {mode === 'register' && (
+            <View style={styles.roleContainer}>
+              <Text style={styles.roleLabel}>Je suis :</Text>
+              <View style={styles.roleRow}>
+                {ROLES.map(r => {
+                  const isActive = role === r.id;
+                  return (
+                    <TouchableOpacity
+                      key={r.id}
+                      style={[styles.roleBtn, isActive && styles.roleBtnActive]}
+                      onPress={() => { haptic.select(); setRole(r.id); }}
+                    >
+                      <Ionicons name={r.icon} size={16} color={isActive ? colors.bg : colors.gold} />
+                      <Text style={[styles.roleBtnText, isActive && { color: colors.bg }]}>
+                        {r.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          )}
 
           {/* Name (register) */}
           {mode === 'register' && (
@@ -182,7 +213,7 @@ export default function LoginScreen() {
             onPress={handleSubmit}
             loading={loading}
             size="lg"
-            style={{ marginTop: spacing.lg }}
+            style={{ marginTop: spacing.md }}
           />
 
           {/* Divider */}
@@ -245,6 +276,20 @@ const styles = StyleSheet.create({
     ...shadow.gold,
   },
   cardTitle: { ...typography.h2, color: colors.textPrimary, marginBottom: spacing.lg },
+
+  roleContainer: { marginBottom: spacing.lg },
+  roleLabel: { ...typography.captionBold, color: colors.textSecondary, marginBottom: spacing.sm },
+  roleRow: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
+  roleBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 10, paddingHorizontal: 8,
+    borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.goldBorder,
+    backgroundColor: colors.bgElevated,
+    minWidth: '30%',
+  },
+  roleBtnActive: { backgroundColor: colors.gold, borderColor: colors.gold },
+  roleBtnText: { ...typography.captionBold, color: colors.gold },
 
   field: {
     flexDirection: 'row', alignItems: 'center',

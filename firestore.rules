@@ -10,7 +10,6 @@ service cloud.firestore {
     function isAdmin()      { return getRole() == 'admin'; }
     function isProvider()   { return getRole() in ['provider', 'artisan', 'admin']; }
     function isCommune()    { return getRole() in ['commune', 'admin']; }
-    function isTourist()    { return getRole() == 'tourist'; }
 
     // ── USERS ────────────────────────────────────────────────────────────────
     match /users/{userId} {
@@ -112,7 +111,50 @@ service cloud.firestore {
     // ── ANALYTICS ────────────────────────────────────────────────────────────
     match /analytics/{eventId} {
       allow read:   if isAdmin() || isCommune();
-      allow create: if isAuth();  // Any authenticated user can log events
+      allow create: if isAuth();
+      allow update, delete: if isAdmin();
+    }
+
+    // ── ACTIVITIES ───────────────────────────────────────────────────────────
+    match /activities/{activityId} {
+      // Public read for active activities
+      allow read: if true;
+
+      // Providers create their own activities
+      allow create: if isAuth() && isProvider()
+        && request.resource.data.keys().hasAll(['name', 'category', 'providerId'])
+        && request.resource.data.createdBy == request.auth.uid;
+
+      // Provider or admin can update
+      allow update: if isAuth() && (
+        resource.data.createdBy == request.auth.uid || isAdmin()
+      );
+
+      allow delete: if isAuth() && (
+        resource.data.createdBy == request.auth.uid || isAdmin()
+      );
+    }
+
+    // ── PLACES (LIEUX) ───────────────────────────────────────────────────────
+    match /places/{placeId} {
+      allow read: if true;
+      allow write: if isAuth() && (isCommune() || isAdmin());
+    }
+
+    // ── USER PREFERENCES ────────────────────────────────────────────────────
+    match /userPreferences/{userId} {
+      allow read, write: if isAuth() && isOwner(userId);
+      allow read: if isAdmin();
+    }
+
+    // ── PASSENGER VISITS ────────────────────────────────────────────────────
+    match /passengerVisits/{visitId} {
+      // User can read/create their own visit logs
+      allow read: if isAuth() && (
+        resource.data.userId == request.auth.uid ||
+        isProvider() || isAdmin()
+      );
+      allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
       allow update, delete: if isAdmin();
     }
 
@@ -123,7 +165,6 @@ service cloud.firestore {
         resource.data.providerId == request.auth.uid ||
         isAdmin()
       );
-      // Payments are created only by Cloud Functions (backend)
       allow create: if false;
       allow update: if isAdmin();
       allow delete: if false;
