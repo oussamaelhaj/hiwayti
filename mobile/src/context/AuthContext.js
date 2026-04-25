@@ -1,0 +1,196 @@
+/**
+ * AuthContext.js — HIWAYTI Authentication + Role Management
+ * Supports: email, phone, Google (proxy), role-based access
+ */
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signInWithCustomToken,
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
+  updateProfile,
+  sendPasswordResetEmail,
+  sendEmailVerification,
+} from 'firebase/auth';
+import * as WebBrowser from 'expo-web-browser';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '../services/firebase';
+import { USER_ROLES } from '../utils/theme';
+
+WebBrowser.maybeCompleteAuthSession();
+
+const AuthContext = createContext(null);
+
+const BACKEND_URL = 'https://hiwayti-backend.onrender.com';
+
+function generateSessionId() {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+export function AuthProvider({ children }) {
+  const [user, setUser]                           = useState(null);
+  const [userRole, setUserRole]                   = useState(null);
+  const [userProfile, setUserProfile]             = useState(null);
+  const [loading, setLoading]                     = useState(true);
+  const [hasSeenOnboarding, setHasSeenOnboarding] = useState(false);
+  const [onboardingLoading, setOnboardingLoading] = useState(true);
+  const pollRef = useRef(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setUser(firebaseUser);
+
+      if (firebaseUser) {
+        // Fetch custom claims for role
+        const idTokenResult = await firebaseUser.getIdTokenResult(true);
+        const role = idTokenResult.claims.role || USER_ROLES.TOURIST;
+        setUserRole(role);
+
+        // Load Firestore profile
+        try {
+          const snap = await getDoc(doc(db, 'users', firebaseUser.uid));
+          if (snap.exists()) setUserProfile(snap.data());
+        } catch (e) {
+          console.warn('[AUTH] Profile fetch failed:', e.message);
+        }
+      } else {
+        setUserRole(null);
+        setUserProfile(null);
+      }
+
+      setLoading(false);
+    });
+
+    AsyncStorage.getItem('hasSeenOnboarding').then(val => {
+      setHasSeenOnboarding(val === 'true');
+      setOnboardingLoading(false);
+    });
+
+    return () => {
+      unsubscribe();
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, []);
+
+  const completeOnboarding = async () => {
+    await AsyncStorage.setItem('hasSeenOnboarding', 'true');
+    setHasSeenOnboarding(true);
+  };
+
+  // ── Upsert Firestore user document ────────────────────────────────────────
+  async function upsertUserDoc(uid, data) {
+    const ref = doc(db, 'users', uid);
+    await setDoc(ref, { ...data, updatedAt: serverTimestamp() }, { merge: true });
+  }
+
+  // ── Email sign-up ────────────────────────────────────────────────────────
+  async function signUp(email, password, displayName, role = USER_ROLES.TOURIST) {
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    await updateProfile(cred.user, { displayName });
+    await sendEmailVerification(cred.user);
+    await upsertUserDoc(cred.user.uid, {
+      uid: cred.user.uid,
+      email,
+      displayName,
+      role,
+      avatarUrl: null,
+      verified: false,
+      createdAt: serverTimestamp(),
+    });
+    return cred.user;
+  }
+
+  // ── Email sign-in ────────────────────────────────────────────────────────
+  async function signIn(email, password) {
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    return cred.user;
+  }
+
+  // ── Google sign-in (proxy) ───────────────────────────────────────────────
+  async function signInWithGoogle() {
+    if (pollRef.current) clearInterval(pollRef.current);
+    const sessionId = generateSessionId();
+    const oauthUrl  = `${BACKEND_URL}/api/auth/google?session_id=${sessionId}`;
+    WebBrowser.openBrowserAsync(oauthUrl);
+
+    return new Promise((resolve, reject) => {
+      let attempts = 0;
+      const MAX = 90;
+      pollRef.current = setInterval(async () => {
+        attempts++;
+        if (attempts > MAX) {
+          clearInterval(pollRef.current);
+          WebBrowser.dismissBrowser();
+          reject(new Error('Délai dépassé — veuillez réessayer.'));
+          return;
+        }
+        try {
+          const res  = await fetch(`${BACKEND_URL}/api/auth/google/poll?session_id=${sessionId}`);
+          const data = await res.json();
+          if (data.status === 'complete') {
+            clearInterval(pollRef.current);
+            await signInWithCustomToken(auth, data.customToken);
+            await upsertUserDoc(data.uid, {
+              uid: data.uid,
+              displayName: data.displayName,
+              avatarUrl: data.photoURL,
+              email: data.email,
+              role: USER_ROLES.TOURIST,
+            });
+            WebBrowser.dismissBrowser();
+            resolve();
+          } else if (data.status === 'error') {
+            clearInterval(pollRef.current);
+            WebBrowser.dismissBrowser();
+            reject(new Error(data.error || 'Erreur Google Sign-In.'));
+          }
+        } catch (e) {
+          // Network hiccup — keep polling
+        }
+      }, 2000);
+    });
+  }
+
+  async function signOut() {
+    await firebaseSignOut(auth);
+  }
+
+  async function resetPassword(email) {
+    if (!email) throw new Error('Veuillez renseigner votre email.');
+    await sendPasswordResetEmail(auth, email);
+  }
+
+  async function updateUserRole(role) {
+    if (!user) return;
+    await upsertUserDoc(user.uid, { role });
+    setUserRole(role);
+  }
+
+  return (
+    <AuthContext.Provider value={{
+      user,
+      userRole,
+      userProfile,
+      loading: loading || onboardingLoading,
+      hasSeenOnboarding,
+      completeOnboarding,
+      signIn,
+      signUp,
+      signOut,
+      resetPassword,
+      signInWithGoogle,
+      updateUserRole,
+      upsertUserDoc,
+    }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be inside <AuthProvider>');
+  return ctx;
+}

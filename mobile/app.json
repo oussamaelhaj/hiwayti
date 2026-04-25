@@ -1,0 +1,69 @@
+{
+  "expo": {
+    "name": "HIWAYTI",
+    "slug": "hiwayti",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#06060e"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "ma.hiwayti.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "HIWAYTI uses your location to find nearby providers and experiences.",
+        "NSLocationAlwaysUsageDescription": "HIWAYTI uses your location to personalize your experience."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#06060e"
+      },
+      "package": "ma.hiwayti.app",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow HIWAYTI to use your location to discover nearby experiences."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#C9A84C",
+          "sounds": []
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "hiwayti-project-id"
+      },
+      "FIREBASE_API_KEY": "YOUR_FIREBASE_API_KEY",
+      "FIREBASE_AUTH_DOMAIN": "hiwayti.firebaseapp.com",
+      "FIREBASE_PROJECT_ID": "hiwayti",
+      "FIREBASE_STORAGE_BUCKET": "hiwayti.appspot.com",
+      "FIREBASE_MESSAGING_SENDER_ID": "YOUR_SENDER_ID",
+      "FIREBASE_APP_ID": "YOUR_APP_ID",
+      "STRIPE_PUBLISHABLE_KEY": "pk_live_YOUR_STRIPE_KEY"
+    }
+  }
+}

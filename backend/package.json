@@ -1,0 +1,29 @@
+{
+  "name": "hiwayti-backend",
+  "version": "1.0.0",
+  "description": "HIWAYTI Backend — Google OAuth proxy, Cloud Functions, Stripe webhook",
+  "main": "index.js",
+  "scripts": {
+    "start":     "node index.js",
+    "dev":       "nodemon index.js",
+    "seed":      "node scripts/seedFirestore.js",
+    "deploy":    "firebase deploy --only functions"
+  },
+  "dependencies": {
+    "cors":               "^2.8.5",
+    "dotenv":             "^16.4.5",
+    "express":            "^4.18.3",
+    "express-rate-limit": "^7.2.0",
+    "firebase-admin":     "^12.0.0",
+    "googleapis":         "^144.0.0",
+    "helmet":             "^7.1.0",
+    "morgan":             "^1.10.0",
+    "stripe":             "^15.8.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
