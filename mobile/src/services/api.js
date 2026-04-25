@@ -7,7 +7,7 @@ import {
   collection, doc, getDoc, getDocs, addDoc, setDoc, updateDoc,
   deleteDoc, query, where, orderBy, limit, startAfter,
   onSnapshot, serverTimestamp, increment, arrayUnion, arrayRemove,
-  GeoPoint, getCountFromServer,
+  GeoPoint, getCountFromServer, documentId
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage, auth } from './firebase';
@@ -119,6 +119,26 @@ export async function updateProvider(id, data) {
   await updateDoc(doc(db, 'providers', id), { ...data, updatedAt: serverTimestamp() });
 }
 
+/**
+ * Fetch unverified providers (Admin)
+ */
+export async function fetchUnverifiedProviders() {
+  const q = query(
+    collection(db, 'providers'),
+    where('verified', '==', false)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+/**
+ * Verify a provider (Admin)
+ */
+export async function verifyProvider(providerId) {
+  const ref = doc(db, 'providers', providerId);
+  await updateDoc(ref, { verified: true });
+}
+
 // ─── ACTIVITIES ───────────────────────────────────────────────────────────────
 /**
  * Fetch all activities for a provider
@@ -145,7 +165,17 @@ export async function fetchActivitiesByCategory(category, count = 30) {
     limit(count)
   );
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const acts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  const providerIds = [...new Set(acts.map(a => a.providerId).filter(Boolean))];
+  if (providerIds.length === 0) return acts;
+  
+  // Max 30 for 'in' query, perfectly matches our limit
+  const pq = query(collection(db, 'providers'), where(documentId(), 'in', providerIds.slice(0, 30)));
+  const psnap = await getDocs(pq);
+  const validProviders = new Set(psnap.docs.filter(d => d.data().verified).map(d => d.id));
+
+  return acts.filter(a => validProviders.has(a.providerId));
 }
 
 /**

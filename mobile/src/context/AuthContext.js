@@ -43,18 +43,30 @@ export function AuthProvider({ children }) {
       setUser(firebaseUser);
 
       if (firebaseUser) {
-        // Fetch custom claims for role
-        const idTokenResult = await firebaseUser.getIdTokenResult(true);
-        const role = idTokenResult.claims.role || USER_ROLES.TOURIST;
-        setUserRole(role);
-
-        // Load Firestore profile
+        // Load Firestore profile first
+        let firestoreRole = USER_ROLES.TOURIST;
         try {
           const snap = await getDoc(doc(db, 'users', firebaseUser.uid));
-          if (snap.exists()) setUserProfile(snap.data());
+          if (snap.exists()) {
+            setUserProfile(snap.data());
+            firestoreRole = snap.data().role || USER_ROLES.TOURIST;
+          }
         } catch (e) {
           console.warn('[AUTH] Profile fetch failed:', e.message);
         }
+
+        // Fetch custom claims for role
+        const idTokenResult = await firebaseUser.getIdTokenResult(true);
+        let role = idTokenResult.claims.role || firestoreRole;
+
+        // HARDCODE ADMIN OVERRIDE
+        if (firebaseUser.email === 'kifachtv24@gmail.com') {
+          role = USER_ROLES.ADMIN;
+          // Ensure it's saved in Firestore too
+          await upsertUserDoc(firebaseUser.uid, { role: USER_ROLES.ADMIN });
+        }
+        
+        setUserRole(role);
       } else {
         setUserRole(null);
         setUserProfile(null);

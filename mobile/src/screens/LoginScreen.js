@@ -71,7 +71,13 @@ export default function LoginScreen() {
       }
     } catch (err) {
       haptic.error();
-      Alert.alert('Erreur', err.message || 'Une erreur est survenue.');
+      let msg = err.message;
+      if (msg.includes('auth/email-already-in-use')) msg = 'Cet email est déjà utilisé.';
+      else if (msg.includes('auth/invalid-email')) msg = 'Format d\'email invalide.';
+      else if (msg.includes('auth/weak-password')) msg = 'Mot de passe trop faible (6 caractères min).';
+      else if (msg.includes('auth/user-not-found') || msg.includes('auth/wrong-password') || msg.includes('auth/invalid-credential')) msg = 'Email ou mot de passe incorrect.';
+      
+      Alert.alert('Erreur', msg);
     } finally {
       setLoading(false);
     }
@@ -94,7 +100,6 @@ export default function LoginScreen() {
   const ROLES = [
     { id: USER_ROLES.TOURIST, label: 'Passager', icon: 'map' },
     { id: USER_ROLES.PROVIDER, label: 'Prestataire', icon: 'briefcase' },
-    { id: USER_ROLES.ADMIN, label: 'Admin', icon: 'shield' },
   ];
 
   return (

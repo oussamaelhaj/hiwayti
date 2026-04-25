@@ -5,12 +5,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  SafeAreaView, Dimensions, ActivityIndicator,
+  SafeAreaView, Dimensions, ActivityIndicator, TextInput, Alert
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BarChart, LineChart } from 'react-native-chart-kit';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { doc, setDoc, updateDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { db } from '../services/firebase';
 import { colors, spacing, radius, typography, CATEGORIES } from '../utils/theme';
 import { haptic, formatPrice, getBookingStatusColor, formatDate } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
@@ -36,21 +38,60 @@ export default function ProviderDashboardScreen({ navigation }) {
   const [loading, setLoading]       = useState(true);
   const [activeTab, setActiveTab]   = useState('overview');
 
+  const isSetupComplete = userProfile?.providerSetupComplete === true;
+  const [setupForm, setSetupForm] = useState({ name: '', category: CATEGORIES[0].id, commune: 'c1', desc: '' });
+  const [setupLoading, setSetupLoading] = useState(false);
+
+  const handleSetupSubmit = async () => {
+    if (!setupForm.name || !setupForm.desc) return Alert.alert('Erreur', 'Veuillez remplir tous les champs');
+    setSetupLoading(true);
+    try {
+      const newId = user.uid;
+      await setDoc(doc(db, 'providers', newId), {
+        name: setupForm.name,
+        category: setupForm.category,
+        communeId: setupForm.commune,
+        description: setupForm.desc,
+        ownerId: user.uid,
+        verified: false,
+        rating: 0,
+        reviews: 0,
+        createdAt: serverTimestamp()
+      });
+      await updateDoc(doc(db, 'users', user.uid), {
+        providerId: newId,
+        providerSetupComplete: true
+      });
+      haptic.success();
+      Alert.alert('Succès', 'Profil soumis avec succès. En attente de validation par l\'administration.');
+      // userProfile in AuthContext will update on next fetch or restart, 
+      // but we can locally force loading or let the user refresh.
+    } catch (e) {
+      haptic.error();
+      Alert.alert('Erreur', e.message);
+    }
+    setSetupLoading(false);
+  };
+
+  const [providerProfile, setProviderProfile] = useState(null);
+
   const providerId = userProfile?.providerId || user?.uid;
 
   const load = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
-      const [b, r, acts, an] = await Promise.all([
+      const [b, r, acts, an, pSnap] = await Promise.all([
         fetchProviderBookings(providerId),
         fetchReviews(providerId, 20),
         fetchProviderActivities(providerId),
         fetchProviderAnalytics(providerId),
+        getDoc(doc(db, 'providers', providerId))
       ]);
       setBookings(b);
       setReviews(r);
       setActivities(acts);
+      if (pSnap.exists()) setProviderProfile(pSnap.data());
       setAnalytics(an);
     } catch (e) { console.warn(e); }
     setLoading(false);
@@ -111,6 +152,75 @@ export default function ProviderDashboardScreen({ navigation }) {
     );
   }
 
+  if (!isSetupComplete) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
+        <ScrollView contentContainerStyle={{ padding: spacing.xl, flexGrow: 1, justifyContent: 'center' }}>
+          <Text style={{ ...typography.h2, color: colors.gold, marginBottom: spacing.md, textAlign: 'center' }}>
+            Bienvenue Prestataire !
+          </Text>
+          <Text style={{ ...typography.body, color: colors.textMuted, marginBottom: spacing.xl, textAlign: 'center' }}>
+            Veuillez remplir ce formulaire pour soumettre votre activité à l'administration.
+          </Text>
+
+          <GlassCard style={{ padding: spacing.lg }}>
+            <Text style={{ ...typography.captionBold, color: colors.textSecondary, marginBottom: 8 }}>Nom de l'entreprise</Text>
+            <TextInput
+              style={styles.setupInput}
+              placeholder="Ex: Surf Club Asilah"
+              placeholderTextColor={colors.textMuted}
+              value={setupForm.name}
+              onChangeText={t => setSetupForm(f => ({ ...f, name: t }))}
+            />
+
+            <Text style={{ ...typography.captionBold, color: colors.textSecondary, marginBottom: 8, marginTop: spacing.md }}>Catégorie</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: spacing.sm }}>
+              {CATEGORIES.map(c => (
+                <TouchableOpacity
+                  key={c.id}
+                  style={[styles.setupChip, setupForm.category === c.id && styles.setupChipActive]}
+                  onPress={() => setSetupForm(f => ({ ...f, category: c.id }))}
+                >
+                  <Text style={[styles.setupChipText, setupForm.category === c.id && { color: colors.bg }]}>{c.labelFr}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={{ ...typography.captionBold, color: colors.textSecondary, marginBottom: 8, marginTop: spacing.md }}>Commune</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: spacing.sm }}>
+              {[{id:'c1', n:'Asilah'}, {id:'c2', n:'Tanger'}, {id:'c3', n:'Chefchaouen'}].map(c => (
+                <TouchableOpacity
+                  key={c.id}
+                  style={[styles.setupChip, setupForm.commune === c.id && styles.setupChipActive]}
+                  onPress={() => setSetupForm(f => ({ ...f, commune: c.id }))}
+                >
+                  <Text style={[styles.setupChipText, setupForm.commune === c.id && { color: colors.bg }]}>{c.n}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={{ ...typography.captionBold, color: colors.textSecondary, marginBottom: 8, marginTop: spacing.md }}>Description</Text>
+            <TextInput
+              style={[styles.setupInput, { height: 100, textAlignVertical: 'top' }]}
+              placeholder="Décrivez votre service..."
+              placeholderTextColor={colors.textMuted}
+              multiline
+              value={setupForm.desc}
+              onChangeText={t => setSetupForm(f => ({ ...f, desc: t }))}
+            />
+
+            <GoldButton
+              title="Soumettre pour validation"
+              onPress={handleSetupSubmit}
+              loading={setupLoading}
+              style={{ marginTop: spacing.xl }}
+            />
+          </GlassCard>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
       {/* Header */}
@@ -144,6 +254,16 @@ export default function ProviderDashboardScreen({ navigation }) {
       </ScrollView>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+
+        {/* ── ALERTS ── */}
+        {providerProfile?.verified === false && (
+          <GlassCard style={[styles.alertCard, { marginBottom: spacing.lg, borderColor: colors.warning }]}>
+            <Ionicons name="time" size={20} color={colors.warning} />
+            <Text style={[styles.alertText, { color: colors.warning, flex: 1 }]}>
+              Votre profil est en attente de validation par l'administration. Vos activités ne sont pas encore publiques.
+            </Text>
+          </GlassCard>
+        )}
 
         {/* ── OVERVIEW ── */}
         {activeTab === 'overview' && (
@@ -474,4 +594,8 @@ const styles = StyleSheet.create({
   kpiRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.md, marginBottom: spacing.sm },
   kpiRowLabel: { ...typography.body, color: colors.textSecondary },
   kpiRowValue: { ...typography.h4, fontWeight: '800' },
+  setupInput: { backgroundColor: colors.bg, borderRadius: radius.md, padding: spacing.md, color: colors.textPrimary, ...typography.body, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  setupChip: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: radius.full, backgroundColor: colors.bg, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  setupChipActive: { backgroundColor: colors.gold, borderColor: colors.gold },
+  setupChipText: { ...typography.captionBold, color: colors.textSecondary },
 });

@@ -14,8 +14,9 @@ import { useTranslation } from 'react-i18next';
 import { colors, spacing, radius, typography, CATEGORIES } from '../utils/theme';
 import { haptic, formatPrice } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
-import { fetchCommuneStats } from '../services/api';
+import { fetchCommuneStats, fetchUnverifiedProviders, verifyProvider } from '../services/api';
 import GlassCard from '../components/ui/GlassCard';
+import GoldButton from '../components/ui/GoldButton';
 
 const { width } = Dimensions.get('window');
 
@@ -35,15 +36,27 @@ export default function CommuneDashboardScreen({ navigation, route }) {
   const communeName = userRole === 'admin' ? 'Administration HIWAYTI' : (route?.params?.communeName || userProfile?.communeName || 'Ma Commune');
 
   const [stats, setStats] = useState(null);
+  const [unverifiedProviders, setUnverifiedProviders] = useState([]);
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchCommuneStats(communeId)
-      .then(setStats)
-      .catch(console.warn)
-      .finally(() => setLoading(false));
-  }, [communeId]);
+    const load = async () => {
+      try {
+        const s = await fetchCommuneStats(communeId);
+        setStats(s);
+        if (userRole === 'admin') {
+          const up = await fetchUnverifiedProviders();
+          setUnverifiedProviders(up);
+        }
+      } catch (e) {
+        console.warn(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [communeId, userRole]);
 
   const monthlyData = {
     labels: ['Oct', 'Nov', 'Déc', 'Jan', 'Fév', 'Mar', 'Avr'],
@@ -63,7 +76,20 @@ export default function CommuneDashboardScreen({ navigation, route }) {
     legendFontSize: 11,
   }));
 
-  const TABS = ['overview', 'economic', 'providers', 'satisfaction'];
+  const TABS = userRole === 'admin' 
+    ? ['overview', 'validations', 'economic', 'providers', 'satisfaction'] 
+    : ['overview', 'economic', 'providers', 'satisfaction'];
+
+  const handleVerify = async (providerId) => {
+    try {
+      await verifyProvider(providerId);
+      setUnverifiedProviders(prev => prev.filter(p => p.id !== providerId));
+      haptic.success();
+    } catch (e) {
+      console.warn(e);
+      haptic.error();
+    }
+  };
 
   if (loading) {
     return (
@@ -113,6 +139,7 @@ export default function CommuneDashboardScreen({ navigation, route }) {
           >
             <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
               {tab === 'overview' ? 'Vue d\'ensemble'
+                : tab === 'validations' ? `Validations (${unverifiedProviders.length})`
                 : tab === 'economic'  ? 'Impact Économique'
                 : tab === 'providers' ? 'Prestataires'
                 : 'Satisfaction'}
@@ -122,6 +149,31 @@ export default function CommuneDashboardScreen({ navigation, route }) {
       </ScrollView>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* ── VALIDATIONS ── */}
+        {activeTab === 'validations' && (
+          <View>
+            <Text style={styles.sectionTitle}>En attente de validation</Text>
+            {unverifiedProviders.length === 0 ? (
+              <GlassCard style={{ padding: spacing.xl, alignItems: 'center' }}>
+                <Text style={{ ...typography.body, color: colors.textMuted }}>Aucun prestataire en attente.</Text>
+              </GlassCard>
+            ) : (
+              unverifiedProviders.map(p => (
+                <GlassCard key={p.id} style={{ padding: spacing.md, marginBottom: spacing.md }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ ...typography.h4, color: colors.textPrimary, marginBottom: 4 }}>{p.name}</Text>
+                      <Text style={{ ...typography.caption, color: colors.gold, marginBottom: 8 }}>{CATEGORIES.find(c => c.id === p.category)?.labelFr || p.category} • {p.communeId}</Text>
+                      <Text style={{ ...typography.body, color: colors.textSecondary }}>{p.description}</Text>
+                    </View>
+                  </View>
+                  <GoldButton title="Valider le profil" onPress={() => handleVerify(p.id)} style={{ marginTop: spacing.md }} />
+                </GlassCard>
+              ))
+            )}
+          </View>
+        )}
+
         {/* ── OVERVIEW ── */}
         {activeTab === 'overview' && (
           <>
