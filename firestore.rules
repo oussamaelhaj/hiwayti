@@ -25,8 +25,8 @@ service cloud.firestore {
 
     // ── PROVIDERS ────────────────────────────────────────────────────────────
     match /providers/{providerId} {
-      // Anyone authenticated can read verified providers
-      allow read: if isAuth();
+      // Anyone can read verified providers (catalog)
+      allow read: if true;
 
       // Providers can create their own listing
       allow create: if isAuth() && isProvider()

@@ -234,6 +234,11 @@ export async function fetchCommuneById(id) {
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
 
+export async function fetchAllCommunes(count = 15) {
+  const snap = await getDocs(query(collection(db, 'communes'), limit(count)));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
 export async function fetchCommuneStats(communeId) {
   const bookingsQ = query(collection(db, 'bookings'), where('communeId', '==', communeId));
   const providersQ = query(collection(db, 'providers'), where('communeId', '==', communeId), where('verified', '==', true));

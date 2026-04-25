@@ -90,7 +90,7 @@ export default function ProviderDetailScreen({ navigation, route }) {
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: 220 }}
       >
         {/* ── COVER IMAGE ── */}
         <Animated.View style={[styles.coverWrap, { transform: [{ translateY: coverTranslate }], opacity: coverOpacity }]}>
@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
   reviewComment:  { ...typography.body, color: colors.textSecondary, lineHeight: 22 },
 
   bottomCta: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
+    position: 'absolute', bottom: 105, left: 0, right: 0,
     borderTopWidth: 1, borderColor: colors.goldBorder, overflow: 'hidden',
   },
   ctaInner: {

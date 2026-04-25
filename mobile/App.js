@@ -24,6 +24,7 @@ import HomeScreen              from './src/screens/HomeScreen';
 import DiscoverScreen          from './src/screens/DiscoverScreen';
 import MapDiscoverScreen       from './src/screens/MapDiscoverScreen';
 import ShopScreen              from './src/screens/ShopScreen';
+import ProductDetailScreen     from './src/screens/ProductDetailScreen';
 import BookingScreen           from './src/screens/BookingScreen';
 import ProfileScreen           from './src/screens/ProfileScreen';
 import ProviderDetailScreen    from './src/screens/ProviderDetailScreen';
@@ -113,6 +114,7 @@ function ShopStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ShopMain" component={ShopScreen} />
+      <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ presentation: 'card' }} />
     </Stack.Navigator>
   );
 }

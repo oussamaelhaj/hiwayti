@@ -16,7 +16,7 @@ import { colors, spacing, radius, typography, CATEGORIES, gradients, shadow } fr
 import { haptic, formatDistance } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 import {
-  fetchFeaturedProviders, fetchTopArtisans, fetchNearbyProviders,
+  fetchFeaturedProviders, fetchTopArtisans, fetchNearbyProviders, fetchAllCommunes
 } from '../services/api';
 import { getAIRecommendations } from '../services/aiEngine';
 import ProviderCard from '../components/cards/ProviderCard';
@@ -33,6 +33,7 @@ export default function HomeScreen({ navigation }) {
   const [nearby, setNearby] = useState([]);
   const [artisans, setArtisans] = useState([]);
   const [aiRecs, setAiRecs] = useState([]);
+  const [communesList, setCommunesList] = useState([]);
   const [location, setLocation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -43,12 +44,14 @@ export default function HomeScreen({ navigation }) {
 
   const loadData = useCallback(async (loc = location) => {
     try {
-      const [feat, arts] = await Promise.all([
+      const [feat, arts, comms] = await Promise.all([
         fetchFeaturedProviders(6),
         fetchTopArtisans(6),
+        fetchAllCommunes(10),
       ]);
       setFeatured(feat);
       setArtisans(arts);
+      setCommunesList(comms);
 
       if (loc) {
         const near = await fetchNearbyProviders(loc.coords.latitude, loc.coords.longitude, 50);
@@ -183,6 +186,25 @@ export default function HomeScreen({ navigation }) {
             })}
           </ScrollView>
         </View>
+
+        {/* ── POPULAR DESTINATIONS (COMMUNES) ─── */}
+        <SectionHeader titleKey="home.destinations" onSeeAll={() => navigation.navigate('Discover')} />
+        <FlatList
+          data={communesList}
+          horizontal
+          renderItem={({ item }) => (
+            <TouchableOpacity style={styles.communeCard} onPress={() => {}}>
+              <Image source={{ uri: item.coverImage || 'https://images.unsplash.com/photo-1539020140153-e479b8c22e70' }} style={styles.communeImage} />
+              <View style={styles.communeOverlay}>
+                <Text style={styles.communeName}>{item.name}</Text>
+              </View>
+            </TouchableOpacity>
+          )}
+          keyExtractor={i => i.id}
+          contentContainerStyle={{ paddingHorizontal: spacing.lg }}
+          showsHorizontalScrollIndicator={false}
+          ListEmptyComponent={loading ? <ProviderCardSkeleton /> : <EmptyBlock message="Aucune destination trouvée" />}
+        />
 
         {/* ── FEATURED EXPERIENCES ─── */}
         <SectionHeader titleKey="home.featured" onSeeAll={() => navigation.navigate('Discover')} />
@@ -342,6 +364,21 @@ const styles = StyleSheet.create({
   catPillActive: { backgroundColor: colors.gold, borderColor: colors.gold },
   catEmoji: { fontSize: 14 },
   catText: { ...typography.captionBold, color: colors.textSecondary },
+
+  communeCard: {
+    width: 140, height: 180,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    marginRight: spacing.md,
+  },
+  communeImage: { width: '100%', height: '100%', resizeMode: 'cover' },
+  communeOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'flex-end',
+    padding: spacing.md,
+  },
+  communeName: { ...typography.h4, color: '#FFF' },
 
   sectionHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',

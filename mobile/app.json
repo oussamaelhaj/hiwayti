@@ -4,14 +4,14 @@
     "slug": "hiwayti",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "splash": {
-      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#06060e"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "ma.hiwayti.app",
@@ -22,7 +22,6 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#06060e"
       },
       "package": "ma.hiwayti.app",
@@ -31,12 +30,12 @@
         "ACCESS_COARSE_LOCATION",
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "WRITE_EXTERNAL_STORAGE",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ]
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    },
+    "web": {},
     "plugins": [
       [
         "expo-location",
@@ -47,23 +46,22 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/notification-icon.png",
           "color": "#C9A84C",
           "sounds": []
         }
       ]
     ],
     "extra": {
+      "FIREBASE_API_KEY": "AIzaSyBIMXq0wBiP3T0RESNUZ5S91p4lK8BjMbM",
+      "FIREBASE_AUTH_DOMAIN": "hiwayti-81fde.firebaseapp.com",
+      "FIREBASE_PROJECT_ID": "hiwayti-81fde",
+      "FIREBASE_STORAGE_BUCKET": "hiwayti-81fde.firebasestorage.app",
+      "FIREBASE_MESSAGING_SENDER_ID": "100771132757",
+      "FIREBASE_APP_ID": "1:100771132757:web:4ae354ecf5b4a989452bdc",
+      "STRIPE_PUBLISHABLE_KEY": "pk_live_YOUR_STRIPE_KEY",
       "eas": {
-        "projectId": "hiwayti-project-id"
-      },
-      "FIREBASE_API_KEY": "YOUR_FIREBASE_API_KEY",
-      "FIREBASE_AUTH_DOMAIN": "hiwayti.firebaseapp.com",
-      "FIREBASE_PROJECT_ID": "hiwayti",
-      "FIREBASE_STORAGE_BUCKET": "hiwayti.appspot.com",
-      "FIREBASE_MESSAGING_SENDER_ID": "YOUR_SENDER_ID",
-      "FIREBASE_APP_ID": "YOUR_APP_ID",
-      "STRIPE_PUBLISHABLE_KEY": "pk_live_YOUR_STRIPE_KEY"
+        "projectId": "9eea1fe1-2c37-4494-b294-05eaca0203bc"
+      }
     }
   }
 }

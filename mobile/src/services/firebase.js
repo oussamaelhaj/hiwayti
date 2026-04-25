@@ -3,8 +3,9 @@
  * Connects to Firestore, Auth, Storage
  */
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+import { initializeFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import Constants from 'expo-constants';
 
@@ -29,8 +30,12 @@ const firebaseConfig = {
 // Prevent duplicate initialization in hot-reload
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-export const auth    = getAuth(app);
-export const db      = getFirestore(app);
+export const auth    = initializeAuth(app, {
+  persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+});
+export const db      = initializeFirestore(app, {
+  experimentalForceLongPolling: true
+});
 export const storage = getStorage(app);
 
 export default app;

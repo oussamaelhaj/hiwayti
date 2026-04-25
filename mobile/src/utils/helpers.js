@@ -49,7 +49,7 @@ export function getRelativeTime(timestamp) {
   const now = new Date();
   const diff = now - d;
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'À l'instant';
+  if (mins < 1) return "À l'instant";
   if (mins < 60) return `Il y a ${mins} min`;
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `Il y a ${hours}h`;
