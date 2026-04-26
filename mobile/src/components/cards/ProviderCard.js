@@ -21,9 +21,11 @@ export default function ProviderCard({
 }) {
   const {
     name, category, commune, rating = 0, reviewCount = 0,
-    price, priceUnit = '/session', coverImage, avatarUrl,
+    price, priceUnit = '/session', coverImage, coverUrl, avatarUrl,
     distanceMeters, verified,
   } = provider || {};
+
+  const displayImage = coverUrl || coverImage;
 
   const cardW = horizontal ? CARD_W : CARD_W_FULL;
   const catColor = colors[category] || colors.gold;
@@ -36,8 +38,8 @@ export default function ProviderCard({
     >
       {/* Cover Image */}
       <View style={[styles.imgWrap, { height: horizontal ? 160 : 140 }]}>
-        {coverImage ? (
-          <Image source={{ uri: coverImage }} style={styles.img} resizeMode="cover" />
+        {displayImage ? (
+          <Image source={{ uri: displayImage }} style={styles.img} resizeMode="cover" />
         ) : (
           <LinearGradient colors={gradients.moroccan} style={styles.img} />
         )}

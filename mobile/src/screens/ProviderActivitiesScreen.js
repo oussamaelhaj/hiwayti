@@ -6,15 +6,16 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, Alert, ActivityIndicator, SafeAreaView, Switch, Modal,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform, Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, radius, typography, CATEGORIES } from '../utils/theme';
 import { haptic, formatPrice } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 import {
-  fetchProviderActivities, createActivity, updateActivity, deleteActivity,
+  fetchProviderActivities, createActivity, updateActivity, deleteActivity, uploadImage
 } from '../services/api';
 import GlassCard from '../components/ui/GlassCard';
 import GoldButton from '../components/ui/GoldButton';
@@ -49,6 +50,7 @@ const EMPTY_FORM = {
   requirements: '',
   meetingPoint: '',
   active: true,
+  imageUrl: null,
 };
 
 export default function ProviderActivitiesScreen({ navigation }) {
@@ -97,9 +99,22 @@ export default function ProviderActivitiesScreen({ navigation }) {
       requirements: Array.isArray(act.requirements) ? act.requirements.join('\n') : act.requirements || '',
       meetingPoint: act.meetingPoint || '',
       active: act.active !== false,
+      imageUrl: act.imageUrl || null,
     });
     setEditingId(act.id);
     setShowModal(true);
+  };
+
+  const pickImage = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.7,
+    });
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setForm(f => ({ ...f, imageUrl: result.assets[0].uri }));
+    }
   };
 
   const handleSave = async () => {
@@ -108,8 +123,14 @@ export default function ProviderActivitiesScreen({ navigation }) {
     haptic.medium();
     setSaving(true);
     try {
+      let finalImageUrl = form.imageUrl;
+      if (form.imageUrl && form.imageUrl.startsWith('file://')) {
+        finalImageUrl = await uploadImage(form.imageUrl, `activities/${providerId}/${Date.now()}`);
+      }
+
       const payload = {
         ...form,
+        imageUrl: finalImageUrl,
         providerId,
         price: parseFloat(form.price) || 0,
         maxParticipants: parseInt(form.maxParticipants) || 8,
@@ -202,9 +223,13 @@ export default function ProviderActivitiesScreen({ navigation }) {
             return (
               <GlassCard key={act.id} style={styles.actCard}>
                 <View style={styles.actTop}>
-                  <View style={[styles.actEmoji, { backgroundColor: (colors[act.category] || colors.gold) + '22' }]}>
-                    <Text style={{ fontSize: 22 }}>{cat?.emoji || '🎯'}</Text>
-                  </View>
+                  {act.imageUrl ? (
+                    <Image source={{ uri: act.imageUrl }} style={styles.actEmoji} />
+                  ) : (
+                    <View style={[styles.actEmoji, { backgroundColor: (colors[act.category] || colors.gold) + '22' }]}>
+                      <Text style={{ fontSize: 22 }}>{cat?.emoji || '🎯'}</Text>
+                    </View>
+                  )}
                   <View style={{ flex: 1 }}>
                     <Text style={styles.actName}>{act.name}</Text>
                     <Text style={styles.actMeta}>{cat?.labelFr || act.category} • {act.duration} • {act.difficulty}</Text>
@@ -269,6 +294,21 @@ export default function ProviderActivitiesScreen({ navigation }) {
             </View>
 
             <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled">
+
+              {/* Image */}
+              <View style={styles.field}>
+                <Text style={styles.fieldLabel}>Image de couverture</Text>
+                <TouchableOpacity style={styles.imageUploadBtn} onPress={pickImage}>
+                  {form.imageUrl ? (
+                    <Image source={{ uri: form.imageUrl }} style={styles.previewImg} />
+                  ) : (
+                    <View style={styles.imagePlaceholder}>
+                      <Ionicons name="image-outline" size={32} color={colors.textMuted} />
+                      <Text style={styles.imagePlaceholderText}>Ajouter une photo</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
 
               {/* Nom */}
               <F label="Nom de l'activité *">
@@ -557,6 +597,10 @@ const styles = StyleSheet.create({
   },
 
   pillGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+  imageUploadBtn: { width: '100%', height: 160, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.bgInput, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  previewImg: { width: '100%', height: '100%', resizeMode: 'cover' },
+  imagePlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
+  imagePlaceholderText: { ...typography.caption, color: colors.textMuted },
   pill: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     paddingVertical: 6, paddingHorizontal: 10, borderRadius: radius.full,

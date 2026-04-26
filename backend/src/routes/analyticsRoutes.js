@@ -106,17 +106,37 @@ router.get('/commune/:id', async (req, res) => {
   try {
     const fs = db();
     const communeId = req.params.id;
-    const [bSnap, pSnap, aSnap, plSnap] = await Promise.all([
+    const [bSnap, pSnap, aSnap, plSnap, bookingsAll, providersAll] = await Promise.all([
       fs.collection('bookings').where('communeId', '==', communeId).count().get(),
       fs.collection('providers').where('communeId', '==', communeId).where('verified', '==', true).count().get(),
       fs.collection('activities').where('communeId', '==', communeId).where('active', '==', true).count().get(),
       fs.collection('places').where('communeId', '==', communeId).count().get(),
+      fs.collection('bookings').where('communeId', '==', communeId).where('status', '==', 'completed').get(),
+      fs.collection('providers').where('communeId', '==', communeId).where('verified', '==', true).get(),
     ]);
+
+    let totalRevenue = 0;
+    bookingsAll.docs.forEach(d => { totalRevenue += (d.data().totalPrice || 0); });
+
+    let totalRating = 0;
+    let ratedProvidersCount = 0;
+    providersAll.docs.forEach(d => {
+      const r = d.data().rating;
+      if (r > 0) {
+        totalRating += r;
+        ratedProvidersCount++;
+      }
+    });
+    const avgRating = ratedProvidersCount > 0 ? (totalRating / ratedProvidersCount) : 0;
+    const satisfaction = avgRating > 0 ? Math.round((avgRating / 5) * 100) + '%' : '—';
+
     res.json({
       totalBookings:   bSnap.data().count,
       activeProviders: pSnap.data().count,
       totalActivities: aSnap.data().count,
       totalPlaces:     plSnap.data().count,
+      totalRevenue,
+      satisfaction
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -135,6 +155,28 @@ router.post('/event', requireAuth, async (req, res) => {
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
     });
     res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Cleanup Test Data ────────────────────────────────────────────────────────
+router.post('/cleanup/:id', async (req, res) => {
+  try {
+    const fs = db();
+    const communeId = req.params.id;
+    
+    // Delete unverified providers in this commune
+    const pSnap = await fs.collection('providers').where('communeId', '==', communeId).where('verified', '==', false).get();
+    const batch = fs.batch();
+    pSnap.docs.forEach(doc => batch.delete(doc.ref));
+    
+    // Delete all bookings in this commune (usually test data)
+    const bSnap = await fs.collection('bookings').where('communeId', '==', communeId).get();
+    bSnap.docs.forEach(doc => batch.delete(doc.ref));
+    
+    await batch.commit();
+    res.json({ success: true, deletedProviders: pSnap.size, deletedBookings: bSnap.size });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

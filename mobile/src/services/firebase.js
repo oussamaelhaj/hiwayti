@@ -9,22 +9,15 @@ import { initializeFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import Constants from 'expo-constants';
 
-const {
-  FIREBASE_API_KEY,
-  FIREBASE_AUTH_DOMAIN,
-  FIREBASE_PROJECT_ID,
-  FIREBASE_STORAGE_BUCKET,
-  FIREBASE_MESSAGING_SENDER_ID,
-  FIREBASE_APP_ID,
-} = Constants.expoConfig?.extra || {};
+const extra = Constants.expoConfig?.extra || Constants.manifest?.extra || {};
 
 const firebaseConfig = {
-  apiKey:            FIREBASE_API_KEY            || 'AIzaSyDEMO_KEY_REPLACE_ME',
-  authDomain:        FIREBASE_AUTH_DOMAIN        || 'hiwayti.firebaseapp.com',
-  projectId:         FIREBASE_PROJECT_ID         || 'hiwayti',
-  storageBucket:     FIREBASE_STORAGE_BUCKET     || 'hiwayti.appspot.com',
-  messagingSenderId: FIREBASE_MESSAGING_SENDER_ID|| '000000000000',
-  appId:             FIREBASE_APP_ID             || '1:000:web:000',
+  apiKey:            extra.FIREBASE_API_KEY            || 'AIzaSyBIMXq0wBiP3T0RESNUZ5S91p4lK8BjMbM',
+  authDomain:        extra.FIREBASE_AUTH_DOMAIN        || 'hiwayti-81fde.firebaseapp.com',
+  projectId:         extra.FIREBASE_PROJECT_ID         || 'hiwayti-81fde',
+  storageBucket:     extra.FIREBASE_STORAGE_BUCKET     || 'hiwayti-81fde.firebasestorage.app',
+  messagingSenderId: extra.FIREBASE_MESSAGING_SENDER_ID|| '100771132757',
+  appId:             extra.FIREBASE_APP_ID             || '1:100771132757:web:4ae354ecf5b4a989452bdc',
 };
 
 // Prevent duplicate initialization in hot-reload

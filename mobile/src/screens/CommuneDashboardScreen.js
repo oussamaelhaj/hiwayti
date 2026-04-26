@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { colors, spacing, radius, typography, CATEGORIES } from '../utils/theme';
 import { haptic, formatPrice } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
-import { fetchCommuneStats, fetchUnverifiedProviders, verifyProvider } from '../services/api';
+import { fetchCommuneStats, fetchUnverifiedProviders, verifyProvider, cleanupCommuneData } from '../services/api';
 import GlassCard from '../components/ui/GlassCard';
 import GoldButton from '../components/ui/GoldButton';
 
@@ -40,21 +40,23 @@ export default function CommuneDashboardScreen({ navigation, route }) {
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const s = await fetchCommuneStats(communeId);
-        setStats(s);
-        if (userRole === 'admin') {
-          const up = await fetchUnverifiedProviders();
-          setUnverifiedProviders(up);
-        }
-      } catch (e) {
-        console.warn(e);
-      } finally {
-        setLoading(false);
+  const load = async () => {
+    try {
+      setLoading(true);
+      const s = await fetchCommuneStats(communeId);
+      setStats(s);
+      if (userRole === 'admin') {
+        const up = await fetchUnverifiedProviders();
+        setUnverifiedProviders(up);
       }
-    };
+    } catch (e) {
+      console.warn(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     load();
   }, [communeId, userRole]);
 
@@ -77,7 +79,7 @@ export default function CommuneDashboardScreen({ navigation, route }) {
   }));
 
   const TABS = userRole === 'admin' 
-    ? ['overview', 'validations', 'economic', 'providers', 'satisfaction'] 
+    ? ['overview', 'validations', 'economic', 'providers', 'satisfaction', 'system'] 
     : ['overview', 'economic', 'providers', 'satisfaction'];
 
   const handleVerify = async (providerId) => {
@@ -116,9 +118,9 @@ export default function CommuneDashboardScreen({ navigation, route }) {
         {/* Top KPIs */}
         <View style={styles.topKpis}>
           {[
-            { label: t('commune.activeProviders'), value: stats?.activeProviders || '—', icon: 'business-outline', color: colors.gold },
-            { label: t('commune.economicImpact'),  value: formatPrice(85000),               icon: 'trending-up-outline', color: colors.success },
-            { label: t('commune.touristSatisfaction'), value: '92%',                          icon: 'heart-outline', color: colors.accent },
+            { label: t('commune.activeProviders'), value: stats?.activeProviders || 0, icon: 'business-outline', color: colors.gold },
+            { label: t('commune.economicImpact'),  value: formatPrice(stats?.totalRevenue || 0), icon: 'trending-up-outline', color: colors.success },
+            { label: t('commune.touristSatisfaction'), value: stats?.satisfaction || '—', icon: 'heart-outline', color: colors.accent },
           ].map((kpi, i) => (
             <View key={i} style={styles.topKpi}>
               <Ionicons name={kpi.icon} size={16} color={kpi.color} />
@@ -142,6 +144,7 @@ export default function CommuneDashboardScreen({ navigation, route }) {
                 : tab === 'validations' ? `Validations (${unverifiedProviders.length})`
                 : tab === 'economic'  ? 'Impact Économique'
                 : tab === 'providers' ? 'Prestataires'
+                : tab === 'system' ? 'Système'
                 : 'Satisfaction'}
             </Text>
           </TouchableOpacity>
@@ -318,6 +321,54 @@ export default function CommuneDashboardScreen({ navigation, route }) {
               </GlassCard>
             ))}
           </>
+        )}
+
+        {/* ── SYSTEM ── */}
+        {activeTab === 'system' && (
+          <View style={{ paddingBottom: spacing.lg }}>
+            <Text style={styles.sectionTitle}>Gestion du Système</Text>
+            <GlassCard style={{ padding: spacing.md, gap: spacing.md }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+                <View style={[styles.kpiIcon, { backgroundColor: colors.danger + '22' }]}>
+                  <Ionicons name="trash-outline" size={24} color={colors.danger} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.kpiValue}>Réinitialisation</Text>
+                  <Text style={styles.topKpiLabel}>Supprime les prestataires non vérifiés et les réservations de test.</Text>
+                </View>
+              </View>
+              <GoldButton
+                title="Nettoyer les données de test"
+                onPress={() => {
+                  Alert.alert(
+                    'Attention',
+                    'Voulez-vous vraiment supprimer toutes les données de test (prestataires non vérifiés et réservations) ?',
+                    [
+                      { text: 'Annuler', style: 'cancel' },
+                      { text: 'Confirmer', style: 'destructive', onPress: async () => {
+                        try {
+                          await cleanupCommuneData(communeId);
+                          Alert.alert('Succès', 'Données nettoyées');
+                          load();
+                        } catch (e) {
+                          Alert.alert('Erreur', e.message);
+                        }
+                      }}
+                    ]
+                  );
+                }}
+                style={{ backgroundColor: colors.danger + '22', borderColor: colors.danger + '44' }}
+              />
+            </GlassCard>
+
+            <View style={{ marginTop: spacing.xl }}>
+              <Text style={styles.sectionTitle}>Paramètres de la Commune</Text>
+              <GlassCard style={{ padding: spacing.md }}>
+                <Text style={styles.topKpiLabel}>ID de la commune: {communeId}</Text>
+                <Text style={styles.topKpiLabel}>Région: Souss-Massa</Text>
+              </GlassCard>
+            </View>
+          </View>
         )}
       </ScrollView>
     </SafeAreaView>

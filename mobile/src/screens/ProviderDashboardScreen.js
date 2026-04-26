@@ -5,12 +5,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  SafeAreaView, Dimensions, ActivityIndicator, TextInput, Alert
+  SafeAreaView, Dimensions, ActivityIndicator, TextInput, Alert, Image
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BarChart, LineChart } from 'react-native-chart-kit';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import * as ImagePicker from 'expo-image-picker';
 import { doc, setDoc, updateDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { colors, spacing, radius, typography, CATEGORIES } from '../utils/theme';
@@ -18,14 +19,14 @@ import { haptic, formatPrice, getBookingStatusColor, formatDate } from '../utils
 import { useAuth } from '../context/AuthContext';
 import {
   fetchProviderBookings, fetchReviews, updateBookingStatus,
-  fetchProviderActivities, fetchProviderAnalytics,
+  fetchProviderActivities, fetchProviderAnalytics, uploadImage
 } from '../services/api';
 import GlassCard from '../components/ui/GlassCard';
 import GoldButton from '../components/ui/GoldButton';
 import StarRating from '../components/ui/StarRating';
 
 const { width } = Dimensions.get('window');
-const TABS = ['overview', 'bookings', 'activities', 'reviews', 'analytics'];
+const TABS = ['overview', 'bookings', 'activities', 'reviews', 'profile'];
 
 export default function ProviderDashboardScreen({ navigation }) {
   const { t } = useTranslation();
@@ -76,6 +77,62 @@ export default function ProviderDashboardScreen({ navigation }) {
   const [providerProfile, setProviderProfile] = useState(null);
 
   const providerId = userProfile?.providerId || user?.uid;
+
+  const [editProfile, setEditProfile] = useState(null);
+  const [updatingProfile, setUpdatingProfile] = useState(false);
+
+  useEffect(() => {
+    if (providerProfile) {
+      setEditProfile({
+        name: providerProfile.name || '',
+        description: providerProfile.description || '',
+        imageUrl: providerProfile.imageUrl || null,
+        coverUrl: providerProfile.coverUrl || null,
+      });
+    }
+  }, [providerProfile]);
+
+  const pickProfileImage = async (field) => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: field === 'coverUrl' ? [16, 9] : [1, 1],
+      quality: 0.7,
+    });
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setEditProfile(p => ({ ...p, [field]: result.assets[0].uri }));
+    }
+  };
+
+  const handleUpdateProfile = async () => {
+    setUpdatingProfile(true);
+    try {
+      let finalImg = editProfile.imageUrl;
+      let finalCover = editProfile.coverUrl;
+
+      if (editProfile.imageUrl && editProfile.imageUrl.startsWith('file://')) {
+        finalImg = await uploadImage(editProfile.imageUrl, `providers/${providerId}/logo`);
+      }
+      if (editProfile.coverUrl && editProfile.coverUrl.startsWith('file://')) {
+        finalCover = await uploadImage(editProfile.coverUrl, `providers/${providerId}/cover`);
+      }
+
+      await updateDoc(doc(db, 'providers', providerId), {
+        name: editProfile.name,
+        description: editProfile.description,
+        imageUrl: finalImg,
+        coverUrl: finalCover,
+        updatedAt: serverTimestamp()
+      });
+      haptic.success();
+      Alert.alert('Succès', 'Profil mis à jour');
+      load();
+    } catch (e) {
+      haptic.error();
+      Alert.alert('Erreur', e.message);
+    }
+    setUpdatingProfile(false);
+  };
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -495,6 +552,62 @@ export default function ProviderDashboardScreen({ navigation }) {
             ))}
           </>
         )}
+
+        {/* ── PROFILE ── */}
+        {activeTab === 'profile' && (
+          <View style={{ paddingBottom: 40 }}>
+            <Text style={styles.sectionTitle}>Profil Professionnel</Text>
+            
+            <Text style={styles.label}>Photo de couverture</Text>
+            <TouchableOpacity style={styles.coverUpload} onPress={() => pickProfileImage('coverUrl')}>
+              {editProfile?.coverUrl ? (
+                <Image source={{ uri: editProfile.coverUrl }} style={styles.coverImg} />
+              ) : (
+                <View style={styles.coverPlaceholder}>
+                  <Ionicons name="image-outline" size={32} color={colors.textMuted} />
+                  <Text style={{ color: colors.textMuted }}>Ajouter une couverture</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginVertical: spacing.md }}>
+              <TouchableOpacity style={styles.logoUpload} onPress={() => pickProfileImage('imageUrl')}>
+                {editProfile?.imageUrl ? (
+                  <Image source={{ uri: editProfile.imageUrl }} style={styles.logoImg} />
+                ) : (
+                  <Ionicons name="camera" size={24} color={colors.textMuted} />
+                )}
+              </TouchableOpacity>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.label}>Nom de l'établissement</Text>
+                <TextInput
+                  style={styles.input}
+                  value={editProfile?.name}
+                  onChangeText={v => setEditProfile(p => ({ ...p, name: v }))}
+                  placeholder="Ex: Surf Club Agadir"
+                  placeholderTextColor={colors.textMuted}
+                />
+              </View>
+            </View>
+
+            <Text style={styles.label}>Description</Text>
+            <TextInput
+              style={[styles.input, { height: 100, textAlignVertical: 'top' }]}
+              value={editProfile?.description}
+              onChangeText={v => setEditProfile(p => ({ ...p, description: v }))}
+              placeholder="Décrivez votre activité..."
+              placeholderTextColor={colors.textMuted}
+              multiline
+            />
+
+            <GoldButton
+              title={updatingProfile ? "Mise à jour..." : "Enregistrer les modifications"}
+              onPress={handleUpdateProfile}
+              loading={updatingProfile}
+              style={{ marginTop: spacing.xl }}
+            />
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -543,6 +656,19 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   actionIcon: { width: 44, height: 44, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
+  
+  label: { ...typography.captionBold, color: colors.textMuted, marginBottom: 8, textTransform: 'uppercase' },
+  input: {
+    ...typography.body, color: colors.textPrimary,
+    backgroundColor: colors.bgInput, borderRadius: radius.md,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+  },
+  coverUpload: { width: '100%', height: 150, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.bgInput, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  coverImg: { width: '100%', height: '100%' },
+  coverPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 5 },
+  logoUpload: { width: 80, height: 80, borderRadius: 40, backgroundColor: colors.bgInput, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderWidth: 2, borderColor: colors.gold },
+  logoImg: { width: '100%', height: '100%' },
   actionLabel: { ...typography.bodyMd, color: colors.textPrimary },
 
   bookingStats: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
@@ -598,4 +724,17 @@ const styles = StyleSheet.create({
   setupChip: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: radius.full, backgroundColor: colors.bg, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
   setupChipActive: { backgroundColor: colors.gold, borderColor: colors.gold },
   setupChipText: { ...typography.captionBold, color: colors.textSecondary },
+
+  label: { ...typography.captionBold, color: colors.textMuted, marginBottom: 8, textTransform: 'uppercase' },
+  input: {
+    ...typography.body, color: colors.textPrimary,
+    backgroundColor: colors.bgInput, borderRadius: radius.md,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+  },
+  coverUpload: { width: '100%', height: 150, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.bgInput, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  coverImg: { width: '100%', height: '100%' },
+  coverPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 5 },
+  logoUpload: { width: 80, height: 80, borderRadius: 40, backgroundColor: colors.bgInput, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderWidth: 2, borderColor: colors.gold },
+  logoImg: { width: '100%', height: '100%' },
 });

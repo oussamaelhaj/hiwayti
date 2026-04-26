@@ -58,23 +58,24 @@ export default function HomeScreen({ navigation }) {
       setCommunesList(comms);
       setPlatformStats(stats);
 
+      // Load trending activities based on user interests
+      let interests = userProfile?.interests || [];
+      if (interests.length === 0 && activeCategory) interests = [activeCategory];
+      if (interests.length === 0) interests = ['surf', 'artisanat']; // Fallback
+
+      const actsPromises = interests.slice(0, 3).map(cat => fetchActivitiesByCategory(cat, 4));
+      const actsResults = await Promise.allSettled(actsPromises);
+      const allActs = actsResults
+        .filter(r => r.status === 'fulfilled')
+        .flatMap(r => r.value);
+      
+      setTrendingActivities(allActs.slice(0, 8));
+
       if (loc) {
         const near = await fetchNearbyProviders(loc.coords.latitude, loc.coords.longitude, 50);
         setNearby(near.slice(0, 10));
-        const recs = await getAIRecommendations({}, { latitude: loc.coords.latitude, longitude: loc.coords.longitude }, 6);
+        const recs = await getAIRecommendations(userProfile || {}, { latitude: loc.coords.latitude, longitude: loc.coords.longitude }, 6);
         setAiRecs(recs);
-      }
-
-      // Load trending activities
-      if (activeCategory) {
-        const acts = await fetchActivitiesByCategory(activeCategory, 6);
-        setTrendingActivities(acts);
-      } else {
-        const acts = await fetchActivitiesByCategory('surf', 3)
-          .catch(() => []);
-        const acts2 = await fetchActivitiesByCategory('padel', 3)
-          .catch(() => []);
-        setTrendingActivities([...acts, ...acts2]);
       }
     } catch (e) {
       console.warn('[HOME] Load error:', e.message);

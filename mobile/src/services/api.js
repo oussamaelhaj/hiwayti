@@ -640,3 +640,15 @@ export async function fetchPlacePassengers(placeId, count = 50) {
   const snap = await getDocs(q);
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
+
+/**
+ * Clean up test/mock data (Admin only)
+ */
+export async function cleanupCommuneData(communeId) {
+  const res = await fetch(`${API_URL}/analytics/cleanup/${communeId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  });
+  if (!res.ok) throw new Error('Cleanup failed');
+  return await res.json();
+}
