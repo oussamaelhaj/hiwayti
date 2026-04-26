@@ -1,173 +1,67 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // ── Helper functions ────────────────────────────────────────────────────
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        request.auth.token.email == 'kifachtv24@gmail.com'
+      );
+    }
+    
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
 
-    // ── HELPER FUNCTIONS ────────────────────────────────────────────────────
-    function isAuth()       { return request.auth != null; }
-    function isOwner(uid)   { return request.auth.uid == uid; }
-    function getRole()      { return request.auth.token.role; }
-    function isAdmin()      { return getRole() == 'admin'; }
-    function isProvider()   { return getRole() in ['provider', 'artisan', 'admin']; }
-    function isCommune()    { return getRole() in ['commune', 'admin']; }
-
-    // ── USERS ────────────────────────────────────────────────────────────────
+    // ── Users ───────────────────────────────────────────────────────────────
     match /users/{userId} {
-      allow read:   if isAuth() && (isOwner(userId) || isAdmin());
-      allow write:  if isAuth() && (isOwner(userId) || isAdmin());
-
-      // Sub-collection: private data
-      match /private/{doc} {
-        allow read, write: if isAuth() && isOwner(userId);
-      }
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isOwner(userId) || isAdmin();
     }
 
-    // ── PROVIDERS ────────────────────────────────────────────────────────────
+    // ── Providers ───────────────────────────────────────────────────────────
     match /providers/{providerId} {
-      // Anyone can read verified providers (catalog)
       allow read: if true;
-
-      // Providers can create their own listing
-      allow create: if isAuth() && isProvider()
-        && request.resource.data.ownerId == request.auth.uid
-        && request.resource.data.keys().hasAll(['name', 'category', 'commune', 'role']);
-
-      // Provider can update their own listing; admin can update any
-      allow update: if isAuth() && (
-        (isProvider() && resource.data.ownerId == request.auth.uid) ||
-        isAdmin()
-      );
-
-      allow delete: if isAuth() && isAdmin();
-    }
-
-    // ── PRODUCTS (ARTISANAT) ─────────────────────────────────────────────────
-    match /products/{productId} {
-      allow read:   if true;  // Public catalog
-      allow create: if isAuth() && isProvider()
-        && request.resource.data.artisanId == request.auth.uid;
-      allow update: if isAuth() && (
-        (isProvider() && resource.data.artisanId == request.auth.uid) ||
-        isAdmin()
-      );
-      allow delete: if isAuth() && (
-        resource.data.artisanId == request.auth.uid || isAdmin()
-      );
-    }
-
-    // ── BOOKINGS ────────────────────────────────────────────────────────────
-    match /bookings/{bookingId} {
-      // Tourist: can read own bookings
-      allow read: if isAuth() && (
-        resource.data.userId == request.auth.uid ||
-        resource.data.providerId == request.auth.uid ||
-        isCommune() || isAdmin()
-      );
-
-      // Authenticated users can create bookings
-      allow create: if isAuth()
-        && request.resource.data.userId == request.auth.uid
-        && request.resource.data.keys().hasAll(['providerId', 'date', 'participants', 'totalPrice']);
-
-      // Provider can confirm/cancel; tourist can cancel; admin can do anything
-      allow update: if isAuth() && (
-        resource.data.userId == request.auth.uid ||
-        resource.data.providerId == request.auth.uid ||
-        isAdmin()
-      );
-
+      allow create: if isAuthenticated();
+      allow update: if isAdmin() || (isAuthenticated() && (resource.data.ownerId == request.auth.uid || request.auth.uid == providerId));
       allow delete: if isAdmin();
     }
 
-    // ── REVIEWS ─────────────────────────────────────────────────────────────
-    match /reviews/{reviewId} {
-      allow read:   if true;
-      allow create: if isAuth()
-        && request.resource.data.userId == request.auth.uid
-        && request.resource.data.rating >= 1
-        && request.resource.data.rating <= 5;
-      allow update: if isAuth() && resource.data.userId == request.auth.uid;
-      allow delete: if isAuth() && (
-        resource.data.userId == request.auth.uid || isAdmin()
-      );
-    }
-
-    // ── COMMUNES ────────────────────────────────────────────────────────────
-    match /communes/{communeId} {
-      // Public commune directory
-      allow read: if true;
-      allow write: if isAuth() && (isCommune() || isAdmin());
-    }
-
-    // ── NOTIFICATIONS ────────────────────────────────────────────────────────
-    match /notifications/{notifId} {
-      allow read:   if isAuth() && resource.data.userId == request.auth.uid;
-      allow create: if isAdmin() || isProvider() || isCommune();
-      allow update: if isAuth() && resource.data.userId == request.auth.uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
-      allow delete: if isAdmin();
-    }
-
-    // ── ANALYTICS ────────────────────────────────────────────────────────────
-    match /analytics/{eventId} {
-      allow read:   if isAdmin() || isCommune();
-      allow create: if isAuth();
-      allow update, delete: if isAdmin();
-    }
-
-    // ── ACTIVITIES ───────────────────────────────────────────────────────────
+    // ── Activities ──────────────────────────────────────────────────────────
     match /activities/{activityId} {
-      // Public read for active activities
       allow read: if true;
-
-      // Providers create their own activities
-      allow create: if isAuth() && isProvider()
-        && request.resource.data.keys().hasAll(['name', 'category', 'providerId'])
-        && request.resource.data.createdBy == request.auth.uid;
-
-      // Provider or admin can update
-      allow update: if isAuth() && (
-        resource.data.createdBy == request.auth.uid || isAdmin()
-      );
-
-      allow delete: if isAuth() && (
-        resource.data.createdBy == request.auth.uid || isAdmin()
-      );
+      allow create: if isAuthenticated();
+      allow update: if isAdmin() || (isAuthenticated() && resource.data.providerId == request.auth.uid);
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.providerId == request.auth.uid);
     }
 
-    // ── PLACES (LIEUX) ───────────────────────────────────────────────────────
+    // ── Bookings ────────────────────────────────────────────────────────────
+    match /bookings/{bookingId} {
+      allow read: if isAdmin() || (isAuthenticated() && (resource.data.userId == request.auth.uid || resource.data.providerId == request.auth.uid));
+      allow create: if isAuthenticated();
+      allow update: if isAdmin() || (isAuthenticated() && (resource.data.userId == request.auth.uid || resource.data.providerId == request.auth.uid));
+      allow delete: if isAdmin();
+    }
+
+    // ── Places ──────────────────────────────────────────────────────────────
     match /places/{placeId} {
       allow read: if true;
-      allow write: if isAuth() && (isCommune() || isAdmin());
+      allow write: if isAdmin();
     }
 
-    // ── USER PREFERENCES ────────────────────────────────────────────────────
-    match /userPreferences/{userId} {
-      allow read, write: if isAuth() && isOwner(userId);
-      allow read: if isAdmin();
-    }
-
-    // ── PASSENGER VISITS ────────────────────────────────────────────────────
+    // ── Passenger Visits / Analytics ────────────────────────────────────────
     match /passengerVisits/{visitId} {
-      // User can read/create their own visit logs
-      allow read: if isAuth() && (
-        resource.data.userId == request.auth.uid ||
-        isProvider() || isAdmin()
-      );
-      allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isAdmin();
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
     }
-
-    // ── PAYMENTS ────────────────────────────────────────────────────────────
-    match /payments/{paymentId} {
-      allow read: if isAuth() && (
-        resource.data.userId == request.auth.uid ||
-        resource.data.providerId == request.auth.uid ||
-        isAdmin()
-      );
-      allow create: if false;
-      allow update: if isAdmin();
-      allow delete: if false;
+    
+    match /userPreferences/{uid} {
+      allow read, write: if isOwner(uid) || isAdmin();
     }
   }
 }

@@ -5,7 +5,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, SafeAreaView,
-  Dimensions, ActivityIndicator, TouchableOpacity,
+  Dimensions, ActivityIndicator, TouchableOpacity, Alert,
 } from 'react-native';
 import { BarChart, LineChart, PieChart } from 'react-native-chart-kit';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -54,6 +54,33 @@ export default function CommuneDashboardScreen({ navigation, route }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCleanup = () => {
+    Alert.alert(
+      "Nettoyage du système",
+      "Voulez-vous vraiment supprimer toutes les données de test (prestataires non vérifiés et réservations fictives) ?",
+      [
+        { text: "Annuler", style: "cancel" },
+        { 
+          text: "Supprimer", 
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setLoading(true);
+              await cleanupCommuneData(communeId);
+              Alert.alert("Succès", "Les données de test ont été nettoyées.");
+              load();
+            } catch (e) {
+              Alert.alert("Erreur", "Le nettoyage a échoué. Vérifiez votre connexion au backend.");
+              console.warn(e);
+            } finally {
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    );
   };
 
   useEffect(() => {

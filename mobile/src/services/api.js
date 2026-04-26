@@ -645,9 +645,13 @@ export async function fetchPlacePassengers(placeId, count = 50) {
  * Clean up test/mock data (Admin only)
  */
 export async function cleanupCommuneData(communeId) {
-  const res = await fetch(`${API_URL}/analytics/cleanup/${communeId}`, {
+  const headers = await authHeader();
+  const res = await fetch(`${BACKEND_URL}/api/analytics/cleanup/${communeId}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' }
+    headers: { 
+      'Content-Type': 'application/json',
+      ...headers
+    }
   });
   if (!res.ok) throw new Error('Cleanup failed');
   return await res.json();
