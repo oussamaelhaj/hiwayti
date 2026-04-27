@@ -144,8 +144,8 @@ export default function ActivityDetailScreen({ navigation, route }) {
                 <StarRating rating={rating} size={16} />
                 <Text style={styles.ratingText}>{formatRating(rating)} ({reviewCount} avis)</Text>
               </View>
-            </SafeAreaView>
-          </View>
+            </View>
+          </SafeAreaView>
         </View>
 
         <View style={styles.content}>
