@@ -417,10 +417,15 @@ export function subscribeToProviderBookings(providerId, callback) {
 export async function fetchProviderAnalytics(providerId) {
   try {
     const headers = await authHeader();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
     const res = await fetch(`${BACKEND_URL}/api/analytics/provider/${providerId}`, { 
       headers,
-      signal: AbortSignal.timeout(5000) // 5s timeout
+      signal: controller.signal
     });
+    clearTimeout(timeoutId);
+
     if (!res.ok) throw new Error('Backend unavailable');
     return await res.json();
   } catch (e) {

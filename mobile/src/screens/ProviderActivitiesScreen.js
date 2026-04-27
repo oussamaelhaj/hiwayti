@@ -378,7 +378,6 @@ export default function ProviderActivitiesScreen({ navigation }) {
                   Maximum 4 photos haute résolution.
                 </Text>
               </View>
-              </View>
 
               {/* Nom */}
               <F label="Nom de l'activité *">
