@@ -5,7 +5,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, FlatList, TouchableOpacity,
-  RefreshControl, Animated, Dimensions, StatusBar, Image,
+  RefreshControl, Animated, Dimensions, StatusBar, Image, ImageBackground,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,11 +18,13 @@ import { useAuth } from '../context/AuthContext';
 import {
   fetchFeaturedProviders, fetchTopArtisans, fetchNearbyProviders,
   fetchAllCommunes, fetchPlatformStats, fetchActivitiesByCategory,
+  resolveImageUrl,
 } from '../services/api';
 import { getAIRecommendations } from '../services/aiEngine';
 import ProviderCard from '../components/cards/ProviderCard';
 import { ProviderCardSkeleton } from '../components/ui/SkeletonLoader';
 import GlassCard from '../components/ui/GlassCard';
+import ZelligePattern from '../components/ui/ZelligePattern';
 
 const { width } = Dimensions.get('window');
 
@@ -157,14 +159,15 @@ export default function HomeScreen({ navigation }) {
       >
         {/* ── HERO ─── */}
         <View style={styles.hero}>
-          <LinearGradient colors={['#06060e', '#0a0714', '#06060e']} style={StyleSheet.absoluteFillObject} />
-          <View style={styles.heroOrb} />
-
+          <ImageBackground source={require('../../assets/home_hero_bg.jpg')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+          <LinearGradient colors={['rgba(6,6,14,0.3)', 'rgba(6,6,14,0.8)']} style={StyleSheet.absoluteFillObject} />
+          <ZelligePattern opacity={0.15} size={100} color={colors.gold} />
+          
           <View style={styles.heroTop}>
             <View>
               <Text style={styles.heroGreeting}>{greeting()}, {user?.displayName?.split(' ')[0] || 'Explorateur'} 👋</Text>
-              <Text style={styles.heroTitle}>Découvrez{'\n'}le Maroc Authentique</Text>
-              <Text style={styles.heroSub}>Sports • Artisanat • Culture</Text>
+              <Text style={styles.heroTitle}>L'Héritage{'\n'}Marocain</Text>
+              <Text style={styles.heroSub}>Artisanat • Aventure • Authenticité</Text>
             </View>
             <TouchableOpacity
               style={styles.notifBtn}
@@ -269,11 +272,12 @@ export default function HomeScreen({ navigation }) {
 
         {/* ── TRENDING ACTIVITIES ─── */}
         {trendingActivities.length > 0 && (
-          <>
+          <View style={styles.artisanBlock}>
+            <ZelligePattern opacity={0.05} size={50} color={colors.terracotta} />
             <SectionHeader
               title={activeCategory
                 ? `Activités · ${CATEGORIES.find(c => c.id === activeCategory)?.labelFr}`
-                : 'Activités Tendances'}
+                : 'Trésors de l\'Artisanat'}
               onSeeAll={() => navigation.navigate('Discover')}
             />
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: spacing.lg, gap: spacing.md }}>
@@ -284,9 +288,13 @@ export default function HomeScreen({ navigation }) {
                   onPress={() => navigation.navigate('ProviderDetail', { provider: { id: act.providerId, ...act } })}
                 >
                   <View style={[styles.activityIconBg, { backgroundColor: (colors[act.category] || colors.gold) + '22' }]}>
-                    <Text style={{ fontSize: 28 }}>
-                      {CATEGORIES.find(c => c.id === act.category)?.emoji || '🎯'}
-                    </Text>
+                    {act.imageUrl ? (
+                      <Image source={{ uri: resolveImageUrl(act.imageUrl) }} style={styles.activityImg} />
+                    ) : (
+                      <Text style={{ fontSize: 28 }}>
+                        {CATEGORIES.find(c => c.id === act.category)?.emoji || '🎯'}
+                      </Text>
+                    )}
                   </View>
                   <Text style={styles.activityName} numberOfLines={2}>{act.name}</Text>
                   <Text style={styles.activityPrice}>{act.price ? `${act.price} MAD` : 'Sur devis'}</Text>
@@ -297,7 +305,7 @@ export default function HomeScreen({ navigation }) {
                 </TouchableOpacity>
               ))}
             </ScrollView>
-          </>
+          </View>
         )}
 
         {/* ── NEAR YOU ─── */}
@@ -451,23 +459,39 @@ const styles = StyleSheet.create({
 
   // Activity cards
   activityCard: {
-    width: 140,
+    width: 150,
+    minHeight: 200,
     backgroundColor: colors.bgCard,
     borderRadius: radius.lg,
     padding: spacing.md,
-    gap: spacing.xs,
+    justifyContent: 'space-between',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.06)',
+  },
+  kpiCard: {
+    width: (width - spacing.lg * 2 - spacing.sm) / 2,
+    minHeight: 110,
+    padding: spacing.md,
+    gap: spacing.xs,
   },
   activityIconBg: {
     width: 52, height: 52, borderRadius: radius.md,
     alignItems: 'center', justifyContent: 'center',
     marginBottom: spacing.xs,
+    overflow: 'hidden',
   },
+  activityImg: { width: '100%', height: '100%', resizeMode: 'cover' },
   activityName: { ...typography.bodyMd, color: colors.textPrimary, lineHeight: 18 },
   activityPrice: { ...typography.captionBold, color: colors.gold },
-  activityMeta: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   activityDuration: { ...typography.caption, color: colors.textMuted },
+
+  artisanBlock: {
+    backgroundColor: '#0c0705', // Deep terracotta base
+    paddingVertical: spacing.md,
+    marginVertical: spacing.lg,
+    borderTopWidth: 1, borderBottomWidth: 1,
+    borderColor: 'rgba(226, 114, 91, 0.1)',
+  },
 
   sectionHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',

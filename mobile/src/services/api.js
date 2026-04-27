@@ -13,7 +13,8 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage, auth } from './firebase';
 import { haversineDistance } from '../utils/helpers';
 
-const BACKEND_URL = 'https://hiwayti-backend.onrender.com';
+const BACKEND_URL = 'http://192.168.0.158:5000'; // Local dev backend
+const PROD_BACKEND_URL = 'https://hiwayti-backend.onrender.com';
 
 // ─── AUTH HEADER ──────────────────────────────────────────────────────────────
 async function authHeader() {
@@ -196,10 +197,16 @@ export async function createActivity(data) {
   });
   // Link activity to provider
   if (data.providerId) {
-    await updateDoc(doc(db, 'providers', data.providerId), {
-      activitiesCount: increment(1),
-      updatedAt: serverTimestamp(),
-    });
+    const providerRef = doc(db, 'providers', data.providerId);
+    const pSnap = await getDoc(providerRef);
+    if (pSnap.exists()) {
+      await updateDoc(providerRef, {
+        activitiesCount: increment(1),
+        updatedAt: serverTimestamp(),
+      });
+    } else {
+      console.warn(`[API] Provider ${data.providerId} not found, skipping counter update.`);
+    }
   }
   return ref_.id;
 }
@@ -211,10 +218,14 @@ export async function updateActivity(id, data) {
 export async function deleteActivity(id, providerId) {
   await deleteDoc(doc(db, 'activities', id));
   if (providerId) {
-    await updateDoc(doc(db, 'providers', providerId), {
-      activitiesCount: increment(-1),
-      updatedAt: serverTimestamp(),
-    });
+    const providerRef = doc(db, 'providers', providerId);
+    const pSnap = await getDoc(providerRef);
+    if (pSnap.exists()) {
+      await updateDoc(providerRef, {
+        activitiesCount: increment(-1),
+        updatedAt: serverTimestamp(),
+      });
+    }
   }
 }
 
@@ -556,12 +567,59 @@ export async function fetchFavorites(uid) {
 }
 
 // ─── IMAGE UPLOAD ─────────────────────────────────────────────────────────────
+/**
+ * Upload an image to Firebase Storage (or Cloudinary as fallback)
+ * Free solution: Firebase Storage has 5GB free. Cloudinary is an alternative.
+ */
 export async function uploadImage(uri, path) {
-  const response = await fetch(uri);
-  const blob = await response.blob();
-  const storageRef = ref(storage, path);
-  await uploadBytes(storageRef, blob);
-  return getDownloadURL(storageRef);
+  try {
+    console.log(`[UPLOAD_START] Path: ${path}`);
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    
+    // Check blob size (Max 10MB for free tier safety)
+    if (blob.size > 10 * 1024 * 1024) {
+      throw new Error('Image trop grande (max 10MB)');
+    }
+
+    const storageRef = ref(storage, path.includes('.') ? path : `${path}.jpg`);
+    await uploadBytes(storageRef, blob);
+    const downloadURL = await getDownloadURL(storageRef);
+    console.log('[UPLOAD_SUCCESS]', downloadURL);
+    return downloadURL;
+  } catch (error) {
+    console.error('[UPLOAD_ERROR]', error);
+    
+    // If it's a "storage unknown" error, it likely means the bucket isn't initialized
+    if (error.code === 'storage/unknown' || error.message.includes('unknown')) {
+      throw new Error(
+        "Erreur Firebase Storage : Le service n'est peut-être pas activé dans votre console Firebase ou le nom du bucket est incorrect. " +
+        "Vérifiez que vous avez cliqué sur 'Commencer' dans l'onglet Storage de la console Firebase."
+      );
+    }
+    
+    throw error;
+  }
+}
+
+/**
+ * Resolves gs:// urls to public https urls if possible
+ * Useful for legacy data or manually entered links
+ */
+export function resolveImageUrl(url) {
+  if (!url) return null;
+  if (typeof url !== 'string') return null;
+  if (url.startsWith('gs://')) {
+    try {
+      const parts = url.split('gs://')[1].split('/');
+      const bucket = parts[0];
+      const filePath = encodeURIComponent(parts.slice(1).join('/'));
+      return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${filePath}?alt=media`;
+    } catch (e) {
+      return url;
+    }
+  }
+  return url;
 }
 
 // ─── NOTIFICATIONS ────────────────────────────────────────────────────────────

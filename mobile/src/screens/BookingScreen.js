@@ -14,7 +14,7 @@ import { colors, spacing, radius, typography, shadow } from '../utils/theme';
 import { haptic, formatPrice, getBookingStatusColor } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 import { createBooking, fetchUserBookings } from '../services/api';
-import GoldButton from '../components/ui/GoldButton';
+import AppButton from '../components/ui/AppButton';
 import GlassCard from '../components/ui/GlassCard';
 
 const TIME_SLOTS = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00'];
@@ -214,11 +214,12 @@ export default function BookingScreen({ navigation, route }) {
             </View>
           </GlassCard>
 
-          <GoldButton
+          <AppButton
             title={t('booking.bookNow')}
             onPress={handleBook}
             loading={loading}
             size="lg"
+            variant="sahara"
             style={{ marginTop: spacing.lg, marginBottom: spacing.xxl }}
           />
         </ScrollView>

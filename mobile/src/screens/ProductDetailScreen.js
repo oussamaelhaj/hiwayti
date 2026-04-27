@@ -2,8 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { colors } from '../utils/theme';
-import GoldButton from '../components/ui/GoldButton';
+import { colors, spacing, radius, typography } from '../utils/theme';
+import AppButton from '../components/ui/AppButton';
 
 export default function ProductDetailScreen() {
   const navigation = useNavigation();
@@ -55,7 +55,7 @@ export default function ProductDetailScreen() {
 
       {/* Floating Buy Button */}
       <View style={styles.footer}>
-        <GoldButton title="Acheter Maintenant" onPress={handleBuy} style={{ width: '100%' }} />
+        <AppButton title="Acheter Maintenant" onPress={handleBuy} variant="marrakech" style={{ width: '100%' }} />
       </View>
     </View>
   );

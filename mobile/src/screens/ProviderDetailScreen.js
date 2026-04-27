@@ -12,10 +12,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { colors, spacing, radius, typography, shadow, CATEGORIES, gradients } from '../utils/theme';
 import { haptic, formatDistance, formatPrice, formatRating } from '../utils/helpers';
-import { fetchReviews, toggleFavorite } from '../services/api';
+import { fetchReviews, toggleFavorite, resolveImageUrl } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import StarRating from '../components/ui/StarRating';
-import GoldButton from '../components/ui/GoldButton';
+import AppButton from '../components/ui/AppButton';
 import GlassCard from '../components/ui/GlassCard';
 import { ListItemSkeleton } from '../components/ui/SkeletonLoader';
 
@@ -31,6 +31,7 @@ export default function ProviderDetailScreen({ navigation, route }) {
     price, priceUnit = '/session', coverImage, avatarUrl,
     location, distanceMeters, verified, phone, email: provEmail,
     schedule, maxParticipants,
+    imageUrls = [], // Array from activity
   } = provider;
 
   const [reviews, setReviews]   = useState([]);
@@ -115,6 +116,19 @@ export default function ProviderDetailScreen({ navigation, route }) {
             <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={22} color={isFav ? colors.danger : '#fff'} />
           </TouchableOpacity>
         </Animated.View>
+
+        {/* ── GALLERY ── */}
+        {imageUrls.length > 1 && (
+          <View style={styles.gallerySection}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.galleryScroll}>
+              {imageUrls.map((url, idx) => (
+                <TouchableOpacity key={idx} style={styles.galleryItem}>
+                  <Image source={{ uri: resolveImageUrl(url) }} style={styles.galleryImg} />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         {/* ── CONTENT ── */}
         <View style={styles.content}>
@@ -236,7 +250,7 @@ export default function ProviderDetailScreen({ navigation, route }) {
             <Text style={styles.ctaPrice}>{formatPrice(price)}</Text>
             <Text style={styles.ctaPriceUnit}>{priceUnit}</Text>
           </View>
-          <GoldButton title="Réserver Maintenant" onPress={handleBook} size="md" style={{ flex: 1, marginLeft: spacing.lg }} />
+          <AppButton title="Réserver Maintenant" onPress={handleBook} variant="marrakech" size="md" style={{ flex: 1, marginLeft: spacing.lg }} />
         </View>
       </View>
     </View>
@@ -322,4 +336,9 @@ const styles = StyleSheet.create({
   },
   ctaPrice:     { ...typography.h3, color: colors.gold },
   ctaPriceUnit: { ...typography.caption, color: colors.textMuted },
+
+  gallerySection: { marginTop: spacing.md, paddingLeft: spacing.lg },
+  galleryScroll:  { gap: spacing.sm, paddingRight: spacing.lg },
+  galleryItem:    { width: width * 0.6, height: 140, borderRadius: radius.md, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
+  galleryImg:     { width: '100%', height: '100%', resizeMode: 'cover' },
 });

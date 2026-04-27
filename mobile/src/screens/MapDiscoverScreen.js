@@ -116,8 +116,8 @@ export default function MapDiscoverScreen({ navigation }) {
     setSelectedProvider(provider);
     Animated.spring(cardAnim, { toValue: 0, useNativeDriver: true, friction: 8 }).start();
     mapRef.current?.animateToRegion({
-      latitude: provider.location.latitude,
-      longitude: provider.location.longitude,
+      latitude: parseFloat(provider.location.latitude),
+      longitude: parseFloat(provider.location.longitude),
       latitudeDelta: 0.05,
       longitudeDelta: 0.05,
     }, 600);
@@ -158,25 +158,30 @@ export default function MapDiscoverScreen({ navigation }) {
         onMapReady={() => setMapReady(true)}
         onPress={() => selectedProvider && dismissCard()}
       >
-        {filteredProviders.map(p => {
-          const catColor = getCatColor(p.category);
-          const isSelected = selectedProvider?.id === p.id;
-          return (
-            <Marker
-              key={p.id}
-              coordinate={{ latitude: p.location.latitude, longitude: p.location.longitude }}
-              onPress={() => selectProvider(p)}
-            >
-              <View style={[
-                styles.pin,
-                { backgroundColor: catColor, borderColor: isSelected ? '#fff' : catColor },
-                isSelected && styles.pinSelected,
-              ]}>
-                <Text style={styles.pinEmoji}>{getCatEmoji(p.category)}</Text>
-              </View>
-            </Marker>
-          );
-        })}
+        {filteredProviders
+          .filter(p => p.location?.latitude && p.location?.longitude)
+          .map(p => {
+            const catColor = getCatColor(p.category);
+            const isSelected = selectedProvider?.id === p.id;
+            return (
+              <Marker
+                key={p.id}
+                coordinate={{ 
+                  latitude: parseFloat(p.location.latitude), 
+                  longitude: parseFloat(p.location.longitude) 
+                }}
+                onPress={() => selectProvider(p)}
+              >
+                <View style={[
+                  styles.pin,
+                  { backgroundColor: catColor, borderColor: isSelected ? '#fff' : catColor },
+                  isSelected && styles.pinSelected,
+                ]}>
+                  <Text style={styles.pinEmoji}>{getCatEmoji(p.category)}</Text>
+                </View>
+              </Marker>
+            );
+          })}
       </MapView>
 
       {/* SEARCH BAR */}

@@ -22,7 +22,7 @@ import {
   fetchProviderActivities, fetchProviderAnalytics, uploadImage
 } from '../services/api';
 import GlassCard from '../components/ui/GlassCard';
-import GoldButton from '../components/ui/GoldButton';
+import AppButton from '../components/ui/AppButton';
 import StarRating from '../components/ui/StarRating';
 
 const { width } = Dimensions.get('window');
@@ -266,10 +266,11 @@ export default function ProviderDashboardScreen({ navigation }) {
               onChangeText={t => setSetupForm(f => ({ ...f, desc: t }))}
             />
 
-            <GoldButton
+            <AppButton
               title="Soumettre pour validation"
               onPress={handleSetupSubmit}
               loading={setupLoading}
+              variant="marrakech"
               style={{ marginTop: spacing.xl }}
             />
           </GlassCard>
@@ -465,11 +466,11 @@ export default function ProviderDashboardScreen({ navigation }) {
               </TouchableOpacity>
             </View>
             {activities.length === 0 ? (
-              <View style={styles.empty}>
-                <Text style={{ fontSize: 44 }}>🎯</Text>
-                <Text style={styles.emptyText}>Aucune activité créée</Text>
-                <GoldButton title="+ Créer une activité" onPress={() => navigation.navigate('ProviderActivities')} size="md" style={{ marginTop: spacing.md }} />
-              </View>
+                <View style={{ flex: 1, gap: spacing.md }}>
+                  <Text style={{ fontSize: 44 }}>🎯</Text>
+                  <Text style={styles.emptyText}>Aucune activité créée</Text>
+                  <AppButton title="+ Créer une activité" onPress={() => navigation.navigate('ProviderActivities')} variant="atlas" size="md" style={{ marginTop: spacing.md }} />
+                </View>
             ) : activities.map(act => {
               const cat = CATEGORIES.find(c => c.id === act.category);
               return (
@@ -600,10 +601,11 @@ export default function ProviderDashboardScreen({ navigation }) {
               multiline
             />
 
-            <GoldButton
+            <AppButton
               title={updatingProfile ? "Mise à jour..." : "Enregistrer les modifications"}
               onPress={handleUpdateProfile}
               loading={updatingProfile}
+              variant="sahara"
               style={{ marginTop: spacing.xl }}
             />
           </View>
@@ -638,7 +640,12 @@ const styles = StyleSheet.create({
   sectionTitle: { ...typography.h4, color: colors.textSecondary, marginBottom: spacing.md, marginTop: spacing.sm },
 
   kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.lg },
-  kpiCard: { width: (width - spacing.lg * 2 - spacing.sm) / 2, padding: spacing.md, gap: spacing.xs },
+  kpiCard: {
+    width: (width - spacing.lg * 2 - spacing.sm) / 2,
+    minHeight: 110,
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
   kpiIcon: { width: 40, height: 40, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
   kpiValue: { ...typography.h2, fontWeight: '800' },
   kpiLabel: { ...typography.caption, color: colors.textMuted },
@@ -650,6 +657,7 @@ const styles = StyleSheet.create({
   actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   actionCard: {
     width: (width - spacing.lg * 2 - spacing.sm) / 2,
+    minHeight: 100,
     backgroundColor: colors.bgCard, borderRadius: radius.md,
     padding: spacing.md, gap: spacing.sm,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',

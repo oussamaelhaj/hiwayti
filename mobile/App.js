@@ -32,6 +32,7 @@ import ProviderDashboardScreen   from './src/screens/ProviderDashboardScreen';
 import CommuneDashboardScreen    from './src/screens/CommuneDashboardScreen';
 import NotificationsScreen       from './src/screens/NotificationsScreen';
 import ProviderActivitiesScreen  from './src/screens/ProviderActivitiesScreen';
+import EditProfileScreen         from './src/screens/EditProfileScreen';
 
 // ── Navigators ────────────────────────────────────────────────────────────────
 const Tab   = createBottomTabNavigator();
@@ -94,8 +95,6 @@ function HomeStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="HomeMain"        component={HomeScreen} />
-      <Stack.Screen name="ProviderDetail"  component={ProviderDetailScreen} options={{ presentation: 'card' }} />
-      <Stack.Screen name="Notifications"   component={NotificationsScreen}  options={{ presentation: 'modal' }} />
     </Stack.Navigator>
   );
 }
@@ -105,7 +104,6 @@ function DiscoverStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="DiscoverMain"   component={DiscoverScreen} />
-      <Stack.Screen name="ProviderDetail" component={ProviderDetailScreen} />
     </Stack.Navigator>
   );
 }
@@ -115,7 +113,6 @@ function ShopStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ShopMain" component={ShopScreen} />
-      <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ presentation: 'card' }} />
     </Stack.Navigator>
   );
 }
@@ -138,6 +135,57 @@ function ProfileStack() {
       <Stack.Screen name="ProviderDashboard"     component={ProviderDashboardScreen} />
       <Stack.Screen name="ProviderActivities"    component={ProviderActivitiesScreen} options={{ presentation: 'modal' }} />
       <Stack.Screen name="CommuneDashboard"      component={CommuneDashboardScreen} />
+    </Stack.Navigator>
+  );
+}
+
+// ── SHARED SCREENS (Accessible from any tab) ──────────────────────────────────
+// We put these here so MapTab, ShopTab, etc. can all reach them.
+function AuthenticatedStack({ userRole }) {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="MainTabs">
+        {props => <MainTabs {...props} userRole={userRole} />}
+      </Stack.Screen>
+      <Stack.Screen 
+        name="ProviderDetail" 
+        component={ProviderDetailScreen} 
+        options={{ presentation: 'card', animation: 'slide_from_right' }} 
+      />
+      <Stack.Screen 
+        name="ProductDetail" 
+        component={ProductDetailScreen} 
+        options={{ presentation: 'card' }} 
+      />
+      <Stack.Screen 
+        name="EditProfile" 
+        component={EditProfileScreen} 
+        options={{ presentation: 'modal' }} 
+      />
+      <Stack.Screen 
+        name="Notifications" 
+        component={NotificationsScreen} 
+        options={{ presentation: 'modal' }} 
+      />
+    </Stack.Navigator>
+  );
+}
+
+// ── PROVIDER STACK (for Tab) ──────────────────────────────────────────────────
+function ProviderStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="DashboardMain"      component={ProviderDashboardScreen} />
+      <Stack.Screen name="ProviderActivities" component={ProviderActivitiesScreen} options={{ presentation: 'modal' }} />
+    </Stack.Navigator>
+  );
+}
+
+// ── COMMUNE STACK (for Tab) ───────────────────────────────────────────────────
+function CommuneStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="CommuneMain"     component={CommuneDashboardScreen} />
     </Stack.Navigator>
   );
 }
@@ -177,12 +225,12 @@ function MainTabs({ userRole }) {
 
       {/* Provider Dashboard tab — only for artisans & sports providers */}
       {isDashboardRole && (
-        <Tab.Screen name="Dashboard" component={ProviderDashboardScreen} />
+        <Tab.Screen name="Dashboard" component={ProviderStack} />
       )}
 
       {/* Commune Dashboard tab — only for commune partners */}
       {isCommuneRole && (
-        <Tab.Screen name="Commune" component={CommuneDashboardScreen} />
+        <Tab.Screen name="Commune" component={CommuneStack} />
       )}
     </Tab.Navigator>
   );
@@ -211,8 +259,8 @@ function RootNavigator() {
         // First-time onboarding
         <OnboardingScreen onFinish={completeOnboarding} />
       ) : (
-        // Authenticated — role-based tabs
-        <MainTabs userRole={userRole} />
+        // Authenticated — global stack + role-based tabs
+        <AuthenticatedStack userRole={userRole} />
       )}
     </NavigationContainer>
   );

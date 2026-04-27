@@ -3,14 +3,14 @@ service firebase.storage {
   match /b/{bucket}/o {
     // User avatars — owner only
     match /avatars/{userId}/{fileName} {
-      allow read:  if request.auth != null;
+      allow read:  if true; // Make public so others can see profiles
       allow write: if request.auth != null
         && request.auth.uid == userId
         && request.resource.size < 5 * 1024 * 1024   // 5 MB max
         && request.resource.contentType.matches('image/.*');
     }
 
-    // Provider media — provider owner only
+    // Provider media — logo, cover, etc.
     match /providers/{providerId}/{fileName} {
       allow read: if true;  // Public
       allow write: if request.auth != null
@@ -18,7 +18,15 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
     }
 
-    // Product images — authenticated providers
+    // Activities — provider activities
+    match /activities/{providerId}/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Product images
     match /products/{productId}/{fileName} {
       allow read: if true;
       allow write: if request.auth != null
@@ -26,9 +34,10 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
     }
 
-    // Everything else — deny
+    // Default — deny
     match /{allPaths=**} {
-      allow read, write: if false;
+      allow read: if true;
+      allow write: if false;
     }
   }
 }

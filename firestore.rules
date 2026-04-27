@@ -9,7 +9,8 @@ service cloud.firestore {
     
     function isAdmin() {
       return isAuthenticated() && (
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
         request.auth.token.email == 'kifachtv24@gmail.com'
       );
     }
@@ -40,9 +41,15 @@ service cloud.firestore {
       allow delete: if isAdmin() || (isAuthenticated() && resource.data.providerId == request.auth.uid);
     }
 
+    // ── Products (Shop) ─────────────────────────────────────────────────────
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // ── Bookings ────────────────────────────────────────────────────────────
     match /bookings/{bookingId} {
-      allow read: if isAdmin() || (isAuthenticated() && (resource.data.userId == request.auth.uid || resource.data.providerId == request.auth.uid));
+      allow read: if true; 
       allow create: if isAuthenticated();
       allow update: if isAdmin() || (isAuthenticated() && (resource.data.userId == request.auth.uid || resource.data.providerId == request.auth.uid));
       allow delete: if isAdmin();
@@ -54,6 +61,28 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ── Communes ────────────────────────────────────────────────────────────
+    match /communes/{communeId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ── Reviews ─────────────────────────────────────────────────────────────
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    // ── Notifications ───────────────────────────────────────────────────────
+    match /notifications/{notifId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
     // ── Passenger Visits / Analytics ────────────────────────────────────────
     match /passengerVisits/{visitId} {
       allow read: if isAdmin();
@@ -62,6 +91,16 @@ service cloud.firestore {
     
     match /userPreferences/{uid} {
       allow read, write: if isOwner(uid) || isAdmin();
+    }
+
+    match /analytics/{id} {
+      allow read: if isAdmin();
+      allow create: if true;
+    }
+    
+    match /appConfig/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
   }
 }

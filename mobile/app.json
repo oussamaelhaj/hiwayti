@@ -25,14 +25,17 @@
         "backgroundColor": "#06060e"
       },
       "package": "ma.hiwayti.app",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBIMXq0wBiP3T0RESNUZ5S91p4lK8BjMbM"
+        }
+      },
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION"
+        "WRITE_EXTERNAL_STORAGE"
       ]
     },
     "web": {},

@@ -12,7 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { colors, spacing, radius, typography, gradients } from '../utils/theme';
 import { haptic } from '../utils/helpers';
-import GoldButton from '../components/ui/GoldButton';
+import AppButton from '../components/ui/AppButton';
 import { useAuth } from '../context/AuthContext';
 
 const { width, height } = Dimensions.get('window');
@@ -182,13 +182,14 @@ export default function OnboardingScreen({ onFinish }) {
             <TouchableOpacity onPress={() => { haptic.light(); onFinish?.(); }}>
               <Text style={styles.skipText}>{t('common.skip')}</Text>
             </TouchableOpacity>
-            <GoldButton title={t('common.next')} onPress={goNext} size="md" />
+            <AppButton title={t('common.next')} onPress={goNext} size="md" />
           </View>
         ) : (
-          <GoldButton
+          <AppButton
             title={t('onboarding.getStarted')}
             onPress={handleFinish}
             size="lg"
+            variant="sahara"
             style={{ marginTop: 8 }}
           />
         )}

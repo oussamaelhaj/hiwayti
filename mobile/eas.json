@@ -11,6 +11,9 @@
       "ios":     { "distribution": "store" }
     }
   },
+  "cli": {
+    "appVersionSource": "remote"
+  },
   "submit": {
     "production": {
       "android": {

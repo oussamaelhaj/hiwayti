@@ -102,7 +102,7 @@ export function AuthProvider({ children }) {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(cred.user, { displayName });
     await sendEmailVerification(cred.user);
-    await upsertUserDoc(cred.user.uid, {
+    const userDoc = {
       uid: cred.user.uid,
       email,
       displayName,
@@ -110,7 +110,10 @@ export function AuthProvider({ children }) {
       avatarUrl: null,
       verified: false,
       createdAt: serverTimestamp(),
-    });
+    };
+    await upsertUserDoc(cred.user.uid, userDoc);
+    setUserRole(role);
+    setUserProfile(userDoc);
     return cred.user;
   }
 
@@ -121,7 +124,7 @@ export function AuthProvider({ children }) {
   }
 
   // ── Google sign-in (proxy) ───────────────────────────────────────────────
-  async function signInWithGoogle() {
+  async function signInWithGoogle(preferredRole = USER_ROLES.TOURIST) {
     if (pollRef.current) clearInterval(pollRef.current);
     const sessionId = generateSessionId();
     const oauthUrl  = `${BACKEND_URL}/api/auth/google?session_id=${sessionId}`;
@@ -144,13 +147,15 @@ export function AuthProvider({ children }) {
           if (data.status === 'complete') {
             clearInterval(pollRef.current);
             await signInWithCustomToken(auth, data.customToken);
+            // Check if user already exists to preserve role
+            const existingSnap = await getDoc(doc(db, 'users', data.uid));
+            const existingData = existingSnap.data() || {};
+            
             await upsertUserDoc(data.uid, {
-              uid: data.uid,
-              displayName: data.displayName,
-              avatarUrl: data.photoURL,
-              email: data.email,
-              role: USER_ROLES.TOURIST,
+              role: existingData.role || preferredRole || USER_ROLES.TOURIST,
             });
+            setUserRole(existingData.role || preferredRole || USER_ROLES.TOURIST);
+            setUserProfile({ ...existingData, displayName: data.displayName, email: data.email, photoURL: data.photoURL, role: existingData.role || preferredRole || USER_ROLES.TOURIST });
             WebBrowser.dismissBrowser();
             resolve();
           } else if (data.status === 'error') {
@@ -180,6 +185,14 @@ export function AuthProvider({ children }) {
     setUserRole(role);
   }
 
+  async function refreshUser() {
+    if (!auth.currentUser) return;
+    const snap = await getDoc(doc(db, 'users', auth.currentUser.uid));
+    if (snap.exists()) {
+      setUserProfile(snap.data());
+    }
+  }
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -195,6 +208,7 @@ export function AuthProvider({ children }) {
       signInWithGoogle,
       updateUserRole,
       upsertUserDoc,
+      refreshUser,
     }}>
       {children}
     </AuthContext.Provider>

@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Image, SafeAreaView, Alert, Switch, ActivityIndicator,
+  Image, SafeAreaView, Alert, Switch, ActivityIndicator, ImageBackground,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,7 +19,7 @@ import {
   fetchUserBookings, fetchFavorites,
 } from '../services/api';
 import GlassCard from '../components/ui/GlassCard';
-import GoldButton from '../components/ui/GoldButton';
+import AppButton from '../components/ui/AppButton';
 import i18n from '../i18n';
 
 const LANGUAGES = [
@@ -138,44 +138,51 @@ export default function ProfileScreen({ navigation }) {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
         {/* ── HERO ── */}
-        <LinearGradient colors={['#0a0500', '#06060e']} style={styles.hero}>
-          <View style={styles.avatarWrap}>
-            {user?.photoURL ? (
-              <Image source={{ uri: user.photoURL }} style={styles.avatar} />
-            ) : (
-              <LinearGradient colors={[colors.goldLight, colors.gold]} style={styles.avatar}>
-                <Text style={styles.avatarText}>{getInitials(user?.displayName || 'U')}</Text>
-              </LinearGradient>
-            )}
-            <TouchableOpacity style={styles.editAvatarBtn} onPress={() => navigation.navigate('EditProfile')}>
-              <Ionicons name="camera" size={14} color={colors.bg} />
-            </TouchableOpacity>
-          </View>
+        <View style={styles.heroWrap}>
+          <ImageBackground source={require('../../assets/profile_bg.jpg')} style={styles.hero} resizeMode="cover">
+            <LinearGradient colors={['rgba(6, 6, 14, 0.4)', 'rgba(6, 6, 14, 0.8)']} style={StyleSheet.absoluteFillObject} />
+            <View style={styles.avatarWrap}>
+              {userProfile?.photoURL ? (
+                <Image 
+                  source={{ uri: userProfile.photoURL }} 
+                  style={styles.avatar} 
+                  onError={(e) => console.warn('Avatar load error:', e.nativeEvent.error)}
+                />
+              ) : (
+                <LinearGradient colors={[colors.goldLight, colors.gold]} style={styles.avatar}>
+                  <Text style={styles.avatarText}>{getInitials(user?.displayName || 'U')}</Text>
+                </LinearGradient>
+              )}
+              <TouchableOpacity style={styles.editAvatarBtn} onPress={() => navigation.navigate('EditProfile')}>
+                <Ionicons name="camera" size={14} color={colors.bg} />
+              </TouchableOpacity>
+            </View>
 
           <Text style={styles.displayName}>{user?.displayName || 'Utilisateur'}</Text>
           <Text style={styles.email}>{user?.email || ''}</Text>
 
-          <View style={[styles.roleBadge, { backgroundColor: roleInfo.color + '22', borderColor: roleInfo.color + '55' }]}>
-            <Ionicons name={roleInfo.icon} size={14} color={roleInfo.color} />
-            <Text style={[styles.roleText, { color: roleInfo.color }]}>{roleInfo.label}</Text>
-            {saving && <ActivityIndicator size="small" color={roleInfo.color} style={{ marginLeft: 6 }} />}
-          </View>
+            <View style={[styles.roleBadge, { backgroundColor: roleInfo.color + '22', borderColor: roleInfo.color + '55' }]}>
+              <Ionicons name={roleInfo.icon} size={14} color={roleInfo.color} />
+              <Text style={[styles.roleText, { color: roleInfo.color }]}>{roleInfo.label}</Text>
+              {saving && <ActivityIndicator size="small" color={roleInfo.color} style={{ marginLeft: 6 }} />}
+            </View>
 
-          {/* Real stats */}
-          <View style={styles.statsRow}>
-            {loadingStats ? (
-              <ActivityIndicator color={colors.gold} />
-            ) : [
-              { label: 'Réservations', value: stats.bookings },
-              { label: 'Favoris',      value: stats.favorites },
-            ].map((s, i) => (
-              <View key={i} style={styles.statItem}>
-                <Text style={styles.statValue}>{s.value}</Text>
-                <Text style={styles.statLabel}>{s.label}</Text>
-              </View>
-            ))}
-          </View>
-        </LinearGradient>
+            {/* Real stats */}
+            <View style={styles.statsRow}>
+              {loadingStats ? (
+                <ActivityIndicator color={colors.gold} />
+              ) : [
+                { label: 'Réservations', value: stats.bookings },
+                { label: 'Favoris',      value: stats.favorites },
+              ].map((s, i) => (
+                <View key={i} style={styles.statItem}>
+                  <Text style={styles.statValue}>{s.value}</Text>
+                  <Text style={styles.statLabel}>{s.label}</Text>
+                </View>
+              ))}
+            </View>
+          </ImageBackground>
+        </View>
 
         {/* ── MON COMPTE ── */}
         <Text style={styles.sectionLabel}>MON COMPTE</Text>
@@ -293,11 +300,11 @@ export default function ProfileScreen({ navigation }) {
           <MenuRow icon="information-circle-outline" label={t('profile.about')}  onPress={() => {}} />
         </GlassCard>
 
-        <GoldButton
+        <AppButton
           title={t('profile.logout')}
           onPress={handleSignOut}
           variant="outline"
-          size="lg"
+          size="md"
           style={{ marginTop: spacing.lg, marginHorizontal: spacing.lg }}
         />
 
@@ -314,9 +321,15 @@ export default function ProfileScreen({ navigation }) {
 const styles = StyleSheet.create({
   content: { paddingBottom: 120 },
 
+  heroWrap: {
+    backgroundColor: colors.bgCard,
+    borderBottomWidth: 1,
+    borderColor: colors.goldBorder,
+    overflow: 'hidden',
+  },
   hero: {
     alignItems: 'center', paddingVertical: spacing.xxl,
-    paddingHorizontal: spacing.lg, marginBottom: spacing.md,
+    paddingHorizontal: spacing.lg,
   },
   avatarWrap: { position: 'relative', marginBottom: spacing.md },
   avatar: {

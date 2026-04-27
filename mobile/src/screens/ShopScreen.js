@@ -15,6 +15,7 @@ import { useAuth } from '../context/AuthContext';
 import { fetchProducts, toggleFavorite } from '../services/api';
 import ProductCard from '../components/cards/ProductCard';
 import { ProductCardSkeleton } from '../components/ui/SkeletonLoader';
+import ZelligePattern from '../components/ui/ZelligePattern';
 
 const SHOP_CATEGORIES = CATEGORIES.filter(c => ['pottery', 'leather', 'textiles', 'cuisine', 'music'].includes(c.id));
 
@@ -64,11 +65,13 @@ export default function ShopScreen({ navigation }) {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
+      <ZelligePattern opacity={0.06} size={60} color={colors.terracotta} />
+      
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerSub}>Marché Artisanat</Text>
-          <Text style={styles.headerTitle}>{t('shop.title')}</Text>
+          <Text style={styles.headerSub}>Patrimoine & Savoir-faire</Text>
+          <Text style={styles.headerTitle}>L'Artisanat</Text>
         </View>
         <TouchableOpacity style={styles.cartBtn} onPress={() => navigation.navigate('Cart')}>
           <Ionicons name="bag-outline" size={22} color={colors.gold} />

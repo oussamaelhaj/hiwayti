@@ -15,10 +15,11 @@ import { colors, spacing, radius, typography, CATEGORIES } from '../utils/theme'
 import { haptic, formatPrice } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 import {
-  fetchProviderActivities, createActivity, updateActivity, deleteActivity, uploadImage
+  fetchProviderActivities, createActivity, updateActivity, deleteActivity, uploadImage,
+  resolveImageUrl,
 } from '../services/api';
 import GlassCard from '../components/ui/GlassCard';
-import GoldButton from '../components/ui/GoldButton';
+import AppButton from '../components/ui/AppButton';
 
 const ACTIVITY_TYPES = [
   { id: 'session', label: 'Session', icon: 'time-outline' },
@@ -50,7 +51,7 @@ const EMPTY_FORM = {
   requirements: '',
   meetingPoint: '',
   active: true,
-  imageUrl: null,
+  imageUrls: [], // Array for up to 4 images
 };
 
 export default function ProviderActivitiesScreen({ navigation }) {
@@ -99,13 +100,13 @@ export default function ProviderActivitiesScreen({ navigation }) {
       requirements: Array.isArray(act.requirements) ? act.requirements.join('\n') : act.requirements || '',
       meetingPoint: act.meetingPoint || '',
       active: act.active !== false,
-      imageUrl: act.imageUrl || null,
+      imageUrls: Array.isArray(act.imageUrls) ? act.imageUrls : (act.imageUrl ? [act.imageUrl] : []),
     });
     setEditingId(act.id);
     setShowModal(true);
   };
 
-  const pickImage = async () => {
+  const pickImage = async (index) => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -113,8 +114,24 @@ export default function ProviderActivitiesScreen({ navigation }) {
       quality: 0.7,
     });
     if (!result.canceled && result.assets && result.assets.length > 0) {
-      setForm(f => ({ ...f, imageUrl: result.assets[0].uri }));
+      const newUri = result.assets[0].uri;
+      setForm(f => {
+        const newImages = [...f.imageUrls];
+        if (index !== undefined && index < newImages.length) {
+          newImages[index] = newUri;
+        } else if (newImages.length < 4) {
+          newImages.push(newUri);
+        }
+        return { ...f, imageUrls: newImages };
+      });
     }
+  };
+
+  const removeImage = (index) => {
+    setForm(f => ({
+      ...f,
+      imageUrls: f.imageUrls.filter((_, i) => i !== index)
+    }));
   };
 
   const handleSave = async () => {
@@ -123,14 +140,21 @@ export default function ProviderActivitiesScreen({ navigation }) {
     haptic.medium();
     setSaving(true);
     try {
-      let finalImageUrl = form.imageUrl;
-      if (form.imageUrl && form.imageUrl.startsWith('file://')) {
-        finalImageUrl = await uploadImage(form.imageUrl, `activities/${providerId}/${Date.now()}`);
+      const finalImageUrls = [];
+      for (let i = 0; i < form.imageUrls.length; i++) {
+        const uri = form.imageUrls[i];
+        if (uri.startsWith('file://')) {
+          const uploaded = await uploadImage(uri, `activities/${providerId}/${Date.now()}_${i}`);
+          finalImageUrls.push(uploaded);
+        } else {
+          finalImageUrls.push(uri);
+        }
       }
 
       const payload = {
         ...form,
-        imageUrl: finalImageUrl,
+        imageUrls: finalImageUrls,
+        imageUrl: finalImageUrls[0] || null, // Keep for backward compat
         providerId,
         price: parseFloat(form.price) || 0,
         maxParticipants: parseInt(form.maxParticipants) || 8,
@@ -214,7 +238,7 @@ export default function ProviderActivitiesScreen({ navigation }) {
               <Text style={{ fontSize: 52 }}>🎯</Text>
               <Text style={styles.emptyTitle}>Aucune activité</Text>
               <Text style={styles.emptyText}>Ajoutez vos premières activités pour attirer des clients</Text>
-              <GoldButton title="+ Créer une activité" onPress={openCreate} size="md" style={{ marginTop: spacing.lg }} />
+              <AppButton title="+ Créer une activité" onPress={openCreate} size="md" style={{ marginTop: spacing.lg }} />
             </View>
           )}
 
@@ -224,7 +248,11 @@ export default function ProviderActivitiesScreen({ navigation }) {
               <GlassCard key={act.id} style={styles.actCard}>
                 <View style={styles.actTop}>
                   {act.imageUrl ? (
-                    <Image source={{ uri: act.imageUrl }} style={styles.actEmoji} />
+                    <Image 
+                      source={{ uri: resolveImageUrl(act.imageUrl) }} 
+                      style={styles.actEmoji} 
+                      onError={(e) => console.warn('Activity image load error:', e.nativeEvent.error)}
+                    />
                   ) : (
                     <View style={[styles.actEmoji, { backgroundColor: (colors[act.category] || colors.gold) + '22' }]}>
                       <Text style={{ fontSize: 22 }}>{cat?.emoji || '🎯'}</Text>
@@ -266,14 +294,23 @@ export default function ProviderActivitiesScreen({ navigation }) {
                 </View>
 
                 <View style={styles.actActions}>
-                  <TouchableOpacity style={styles.editBtn} onPress={() => openEdit(act)}>
-                    <Ionicons name="pencil-outline" size={16} color={colors.gold} />
-                    <Text style={styles.editBtnText}>Modifier</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(act)}>
-                    <Ionicons name="trash-outline" size={16} color={colors.danger} />
-                    <Text style={styles.deleteBtnText}>Supprimer</Text>
-                  </TouchableOpacity>
+                  <AppButton
+                    title="Modifier"
+                    onPress={() => openEdit(act)}
+                    variant="outline"
+                    size="sm"
+                    icon={<Ionicons name="pencil-outline" size={14} color={colors.gold} />}
+                    style={{ flex: 1 }}
+                  />
+                  <AppButton
+                    title="Supprimer"
+                    onPress={() => handleDelete(act)}
+                    variant="ghost"
+                    size="sm"
+                    icon={<Ionicons name="trash-outline" size={14} color={colors.danger} />}
+                    style={{ flex: 1 }}
+                    textStyle={{ color: colors.danger }}
+                  />
                 </View>
               </GlassCard>
             );
@@ -295,19 +332,25 @@ export default function ProviderActivitiesScreen({ navigation }) {
 
             <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled">
 
-              {/* Image */}
+              {/* Images */}
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Image de couverture</Text>
-                <TouchableOpacity style={styles.imageUploadBtn} onPress={pickImage}>
-                  {form.imageUrl ? (
-                    <Image source={{ uri: form.imageUrl }} style={styles.previewImg} />
-                  ) : (
-                    <View style={styles.imagePlaceholder}>
-                      <Ionicons name="image-outline" size={32} color={colors.textMuted} />
-                      <Text style={styles.imagePlaceholderText}>Ajouter une photo</Text>
+                <Text style={styles.fieldLabel}>Photos de l'activité (Max 4)</Text>
+                <View style={styles.imageGrid}>
+                  {form.imageUrls.map((uri, idx) => (
+                    <View key={idx} style={styles.imageBox}>
+                      <Image source={{ uri }} style={styles.previewImg} />
+                      <TouchableOpacity style={styles.removeImgBtn} onPress={() => removeImage(idx)}>
+                        <Ionicons name="close-circle" size={20} color={colors.danger} />
+                      </TouchableOpacity>
                     </View>
+                  ))}
+                  {form.imageUrls.length < 4 && (
+                    <TouchableOpacity style={styles.addImgBtn} onPress={() => pickImage()}>
+                      <Ionicons name="add" size={32} color={colors.textMuted} />
+                      <Text style={styles.addImgText}>{form.imageUrls.length === 0 ? 'Ajouter' : 'Autre'}</Text>
+                    </TouchableOpacity>
                   )}
-                </TouchableOpacity>
+                </View>
               </View>
 
               {/* Nom */}
@@ -515,11 +558,11 @@ export default function ProviderActivitiesScreen({ navigation }) {
                 />
               </View>
 
-              <GoldButton
+              <AppButton
                 title={saving ? 'Enregistrement…' : (editingId ? 'Sauvegarder' : 'Créer l\'activité')}
                 onPress={handleSave}
                 loading={saving}
-                size="lg"
+                size="md"
                 style={{ marginTop: spacing.xl, marginBottom: spacing.xxl }}
               />
             </ScrollView>
@@ -597,7 +640,11 @@ const styles = StyleSheet.create({
   },
 
   pillGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  imageUploadBtn: { width: '100%', height: 160, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.bgInput, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  imageGrid: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
+  imageBox: { width: '47%', height: 100, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.bgInput, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  addImgBtn: { width: '47%', height: 100, borderRadius: radius.md, borderStyle: 'dashed', borderWidth: 1, borderColor: colors.textMuted, alignItems: 'center', justifyContent: 'center' },
+  addImgText: { ...typography.caption, color: colors.textMuted, marginTop: 4 },
+  removeImgBtn: { position: 'absolute', top: 4, right: 4, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 10 },
   previewImg: { width: '100%', height: '100%', resizeMode: 'cover' },
   imagePlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
   imagePlaceholderText: { ...typography.caption, color: colors.textMuted },

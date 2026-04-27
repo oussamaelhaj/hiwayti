@@ -161,22 +161,44 @@ router.post('/event', requireAuth, async (req, res) => {
 });
 
 // ── Cleanup Test Data ────────────────────────────────────────────────────────
-router.post('/cleanup/:id', async (req, res) => {
+router.post('/cleanup/:id', requireAuth, async (req, res) => {
   try {
     const fs = db();
     const communeId = req.params.id;
-    
-    // Delete unverified providers in this commune
-    const pSnap = await fs.collection('providers').where('communeId', '==', communeId).where('verified', '==', false).get();
     const batch = fs.batch();
-    pSnap.docs.forEach(doc => batch.delete(doc.ref));
-    
-    // Delete all bookings in this commune (usually test data)
-    const bSnap = await fs.collection('bookings').where('communeId', '==', communeId).get();
-    bSnap.docs.forEach(doc => batch.delete(doc.ref));
-    
+    let deletedProviders = 0;
+    let deletedBookings = 0;
+    let deletedActivities = 0;
+
+    if (communeId === 'all') {
+      if (req.user.email !== 'kifachtv24@gmail.com') return res.status(403).json({ error: 'Global reset forbidden' });
+      
+      const pSnap = await fs.collection('providers').where('verified', '==', false).get();
+      for (const pDoc of pSnap.docs) {
+        batch.delete(pDoc.ref);
+        deletedProviders++;
+        // Delete provider activities
+        const aSnap = await fs.collection('activities').where('providerId', '==', pDoc.id).get();
+        aSnap.docs.forEach(doc => { batch.delete(doc.ref); deletedActivities++; });
+      }
+
+      const bSnap = await fs.collection('bookings').get();
+      bSnap.docs.forEach(doc => { batch.delete(doc.ref); deletedBookings++; });
+    } else {
+      const pSnap = await fs.collection('providers').where('communeId', '==', communeId).where('verified', '==', false).get();
+      for (const pDoc of pSnap.docs) {
+        batch.delete(pDoc.ref);
+        deletedProviders++;
+        const aSnap = await fs.collection('activities').where('providerId', '==', pDoc.id).get();
+        aSnap.docs.forEach(doc => { batch.delete(doc.ref); deletedActivities++; });
+      }
+      
+      const bSnap = await fs.collection('bookings').where('communeId', '==', communeId).get();
+      bSnap.docs.forEach(doc => { batch.delete(doc.ref); deletedBookings++; });
+    }
+
     await batch.commit();
-    res.json({ success: true, deletedProviders: pSnap.size, deletedBookings: bSnap.size });
+    res.json({ success: true, deletedProviders, deletedBookings, deletedActivities });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

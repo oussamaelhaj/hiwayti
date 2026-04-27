@@ -5,15 +5,16 @@
 import React, { useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  KeyboardAvoidingView, Platform, ScrollView, Animated, Alert,
+  KeyboardAvoidingView, Platform, ScrollView, Animated, Alert, ImageBackground,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { colors, spacing, radius, typography, shadow, USER_ROLES } from '../utils/theme';
+import { colors, spacing, radius, typography, shadow, USER_ROLES, gradients } from '../utils/theme';
 import { haptic } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
-import GoldButton from '../components/ui/GoldButton';
+import AppButton from '../components/ui/AppButton';
+import ZelligePattern from '../components/ui/ZelligePattern';
 
 export default function LoginScreen() {
   const { t } = useTranslation();
@@ -87,7 +88,7 @@ export default function LoginScreen() {
     setGoogleLoading(true);
     haptic.medium();
     try {
-      await signInWithGoogle(); // Default role is Tourist from Google, can be changed later
+      await signInWithGoogle(role);
       haptic.success();
     } catch (err) {
       haptic.error();
@@ -104,7 +105,16 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <LinearGradient colors={['#06060e', '#0a0614', '#06060e']} style={StyleSheet.absoluteFillObject} />
+      <ImageBackground 
+        source={require('../../assets/login_bg.jpg')} 
+        style={StyleSheet.absoluteFillObject}
+        resizeMode="cover"
+      >
+        <LinearGradient 
+          colors={['rgba(6, 6, 14, 0.4)', 'rgba(6, 6, 14, 0.95)']} 
+          style={StyleSheet.absoluteFillObject} 
+        />
+        <ZelligePattern opacity={0.15} size={100} color={colors.gold} />
 
       {/* Decorative orbs */}
       <View style={[styles.orb, styles.orb1]} />
@@ -118,7 +128,7 @@ export default function LoginScreen() {
         {/* Logo / Header */}
         <Animated.View style={[styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
           <View style={styles.logoWrap}>
-            <Text style={styles.logoEmoji}>🌍</Text>
+            <Text style={styles.logoEmoji}>🐪</Text>
           </View>
           <Text style={styles.appName}>HIWAYTI</Text>
           <Text style={styles.tagline}>{t('common.tagline')}</Text>
@@ -213,10 +223,11 @@ export default function LoginScreen() {
           )}
 
           {/* Submit */}
-          <GoldButton
+          <AppButton
             title={mode === 'login' ? t('auth.login') : mode === 'register' ? t('auth.register') : 'Envoyer'}
             onPress={handleSubmit}
             loading={loading}
+            variant="sahara"
             size="lg"
             style={{ marginTop: spacing.md }}
           />
@@ -231,12 +242,15 @@ export default function LoginScreen() {
               </View>
 
               {/* Google */}
-              <TouchableOpacity style={styles.googleBtn} onPress={handleGoogle} disabled={googleLoading}>
-                <Text style={styles.googleIcon}>🅖</Text>
-                <Text style={styles.googleText}>
-                  {googleLoading ? 'Connexion…' : t('auth.google')}
-                </Text>
-              </TouchableOpacity>
+              <AppButton
+                title={googleLoading ? 'Connexion…' : t('auth.google')}
+                onPress={handleGoogle}
+                disabled={googleLoading}
+                variant="outline"
+                size="md"
+                icon={<Text style={{ fontSize: 18 }}>🅖</Text>}
+                style={{ marginTop: spacing.lg }}
+              />
             </>
           )}
 
@@ -253,6 +267,7 @@ export default function LoginScreen() {
           </View>
         </Animated.View>
       </ScrollView>
+      </ImageBackground>
     </KeyboardAvoidingView>
   );
 }

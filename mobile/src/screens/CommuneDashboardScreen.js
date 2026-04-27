@@ -16,7 +16,7 @@ import { haptic, formatPrice } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 import { fetchCommuneStats, fetchUnverifiedProviders, verifyProvider, cleanupCommuneData } from '../services/api';
 import GlassCard from '../components/ui/GlassCard';
-import GoldButton from '../components/ui/GoldButton';
+import AppButton from '../components/ui/AppButton';
 
 const { width } = Dimensions.get('window');
 
@@ -68,7 +68,8 @@ export default function CommuneDashboardScreen({ navigation, route }) {
           onPress: async () => {
             try {
               setLoading(true);
-              await cleanupCommuneData(communeId);
+              const target = communeId || 'all';
+              await cleanupCommuneData(target);
               Alert.alert("Succès", "Les données de test ont été nettoyées.");
               load();
             } catch (e) {
@@ -197,7 +198,7 @@ export default function CommuneDashboardScreen({ navigation, route }) {
                       <Text style={{ ...typography.body, color: colors.textSecondary }}>{p.description}</Text>
                     </View>
                   </View>
-                  <GoldButton title="Valider le profil" onPress={() => handleVerify(p.id)} style={{ marginTop: spacing.md }} />
+                  <AppButton title="Valider le profil" onPress={() => handleVerify(p.id)} variant="marrakech" style={{ marginTop: spacing.md }} />
                 </GlassCard>
               ))
             )}
@@ -364,7 +365,7 @@ export default function CommuneDashboardScreen({ navigation, route }) {
                   <Text style={styles.topKpiLabel}>Supprime les prestataires non vérifiés et les réservations de test.</Text>
                 </View>
               </View>
-              <GoldButton
+              <AppButton
                 title="Nettoyer les données de test"
                 onPress={() => {
                   Alert.alert(
@@ -434,7 +435,12 @@ const styles = StyleSheet.create({
   sectionTitle: { ...typography.h4, color: colors.textSecondary, marginBottom: spacing.md, marginTop: spacing.md },
 
   kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
-  kpiCard: { width: (width - spacing.lg * 2 - spacing.sm) / 2, padding: spacing.md, gap: spacing.xs },
+  kpiCard: {
+    width: (width - spacing.lg * 2 - spacing.sm) / 2,
+    minHeight: 110,
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
   kpiIcon: { width: 40, height: 40, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
   kpiValue: { ...typography.h2, fontWeight: '800' },
   kpiLabel: { ...typography.caption, color: colors.textMuted },
