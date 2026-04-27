@@ -33,6 +33,9 @@ import CommuneDashboardScreen    from './src/screens/CommuneDashboardScreen';
 import NotificationsScreen       from './src/screens/NotificationsScreen';
 import ProviderActivitiesScreen  from './src/screens/ProviderActivitiesScreen';
 import EditProfileScreen         from './src/screens/EditProfileScreen';
+import ActivityDetailScreen      from './src/screens/ActivityDetailScreen';
+import FavoritesScreen           from './src/screens/FavoritesScreen';
+import MyBookingsScreen          from './src/screens/MyBookingsScreen';
 
 // ── Navigators ────────────────────────────────────────────────────────────────
 const Tab   = createBottomTabNavigator();
@@ -122,7 +125,7 @@ function BookingStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="BookingMain"    component={BookingScreen} />
-      <Stack.Screen name="MyBookings"     component={BookingScreen} />
+      <Stack.Screen name="MyBookings"     component={MyBookingsScreen} />
     </Stack.Navigator>
   );
 }
@@ -135,6 +138,7 @@ function ProfileStack() {
       <Stack.Screen name="ProviderDashboard"     component={ProviderDashboardScreen} />
       <Stack.Screen name="ProviderActivities"    component={ProviderActivitiesScreen} options={{ presentation: 'modal' }} />
       <Stack.Screen name="CommuneDashboard"      component={CommuneDashboardScreen} />
+      <Stack.Screen name="Favorites"             component={FavoritesScreen} />
     </Stack.Navigator>
   );
 }
@@ -156,6 +160,11 @@ function AuthenticatedStack({ userRole }) {
         name="ProductDetail" 
         component={ProductDetailScreen} 
         options={{ presentation: 'card' }} 
+      />
+      <Stack.Screen 
+        name="ActivityDetail" 
+        component={ActivityDetailScreen} 
+        options={{ presentation: 'card', animation: 'slide_from_right' }} 
       />
       <Stack.Screen 
         name="EditProfile" 

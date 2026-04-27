@@ -141,8 +141,8 @@ export default function LoginScreen() {
             {mode === 'login' ? t('auth.login') : mode === 'register' ? t('auth.register') : 'Mot de passe oublié'}
           </Text>
 
-          {/* Role Selection (register only) */}
-          {mode === 'register' && (
+          {/* Role Selection (register & login for Google preference) */}
+          {(mode === 'register' || mode === 'login') && (
             <View style={styles.roleContainer}>
               <Text style={styles.roleLabel}>Je suis :</Text>
               <View style={styles.roleRow}>

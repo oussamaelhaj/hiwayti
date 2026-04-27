@@ -92,7 +92,13 @@ export default function ProviderDashboardScreen({ navigation }) {
     }
   }, [providerProfile]);
 
-  const pickProfileImage = async (field) => {
+  const pickImage = async (field) => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission requise', 'Nous avons besoin d\'accéder à vos photos.');
+      return;
+    }
+
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -137,24 +143,52 @@ export default function ProviderDashboardScreen({ navigation }) {
   const load = useCallback(async () => {
     if (!user) return;
     setLoading(true);
+    console.log('[DASHBOARD] Loading data for provider:', providerId);
     try {
-      const [b, r, acts, an, pSnap] = await Promise.all([
-        fetchProviderBookings(providerId),
-        fetchReviews(providerId, 20),
-        fetchProviderActivities(providerId),
-        fetchProviderAnalytics(providerId),
-        getDoc(doc(db, 'providers', providerId))
+      // 1. Check if provider document exists first
+      const pSnap = await getDoc(doc(db, 'providers', providerId));
+      if (pSnap.exists()) {
+        setProviderProfile(pSnap.data());
+      } else {
+        console.warn('[DASHBOARD] Provider doc not found at:', providerId);
+        // If doc doesn't exist, we might be in setup mode
+        if (isSetupComplete) {
+          // Force incomplete if doc missing
+          console.log('[DASHBOARD] Setup was marked complete but doc is missing.');
+        }
+      }
+
+      // 2. Fetch related data (parallel, with individual catches to prevent global failure)
+      const [b, r, acts, an] = await Promise.all([
+        fetchProviderBookings(providerId).catch(e => { console.warn('[DASHBOARD] Bookings failed:', e.message); return []; }),
+        fetchReviews(providerId, 20).catch(e => { console.warn('[DASHBOARD] Reviews failed:', e.message); return []; }),
+        fetchProviderActivities(providerId).catch(e => { console.warn('[DASHBOARD] Activities failed:', e.message); return []; }),
+        fetchProviderAnalytics(providerId).catch(e => { console.warn('[DASHBOARD] Analytics failed:', e.message); return null; }),
       ]);
+
       setBookings(b);
       setReviews(r);
       setActivities(acts);
-      if (pSnap.exists()) setProviderProfile(pSnap.data());
       setAnalytics(an);
-    } catch (e) { console.warn(e); }
-    setLoading(false);
-  }, [user, providerId]);
+    } catch (e) {
+      console.error('[DASHBOARD] Critical load error:', e);
+      Alert.alert('Erreur de chargement', 'Impossible de charger vos données. Vérifiez votre connexion.');
+    } finally {
+      setLoading(false);
+    }
+  }, [user, providerId, isSetupComplete]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { 
+    const timeout = setTimeout(() => {
+      if (loading) {
+        console.warn('[DASHBOARD] Loading timeout reached');
+        setLoading(false);
+      }
+    }, 10000); // 10s safety timeout
+
+    load(); 
+    return () => clearTimeout(timeout);
+  }, [load]);
 
   // ── Computed KPIs ──
   const totalRevenue   = analytics?.totalRevenue ?? bookings.filter(b => b.status === 'completed').reduce((s, b) => s + (b.totalPrice || 0), 0);
@@ -560,7 +594,7 @@ export default function ProviderDashboardScreen({ navigation }) {
             <Text style={styles.sectionTitle}>Profil Professionnel</Text>
             
             <Text style={styles.label}>Photo de couverture</Text>
-            <TouchableOpacity style={styles.coverUpload} onPress={() => pickProfileImage('coverUrl')}>
+            <TouchableOpacity style={styles.coverUpload} onPress={() => pickImage('coverUrl')}>
               {editProfile?.coverUrl ? (
                 <Image source={{ uri: editProfile.coverUrl }} style={styles.coverImg} />
               ) : (
@@ -572,7 +606,7 @@ export default function ProviderDashboardScreen({ navigation }) {
             </TouchableOpacity>
 
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginVertical: spacing.md }}>
-              <TouchableOpacity style={styles.logoUpload} onPress={() => pickProfileImage('imageUrl')}>
+              <TouchableOpacity style={styles.logoUpload} onPress={() => pickImage('imageUrl')}>
                 {editProfile?.imageUrl ? (
                   <Image source={{ uri: editProfile.imageUrl }} style={styles.logoImg} />
                 ) : (

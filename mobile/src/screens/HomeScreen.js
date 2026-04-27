@@ -22,6 +22,7 @@ import {
 } from '../services/api';
 import { getAIRecommendations } from '../services/aiEngine';
 import ProviderCard from '../components/cards/ProviderCard';
+import ActivityCard from '../components/cards/ActivityCard';
 import { ProviderCardSkeleton } from '../components/ui/SkeletonLoader';
 import GlassCard from '../components/ui/GlassCard';
 import ZelligePattern from '../components/ui/ZelligePattern';
@@ -165,7 +166,7 @@ export default function HomeScreen({ navigation }) {
           
           <View style={styles.heroTop}>
             <View>
-              <Text style={styles.heroGreeting}>{greeting()}, {user?.displayName?.split(' ')[0] || 'Explorateur'} 👋</Text>
+              <Text style={styles.heroGreeting}>{greeting()}, {userProfile?.displayName || user?.displayName?.split(' ')[0] || 'Explorateur'} 👋</Text>
               <Text style={styles.heroTitle}>L'Héritage{'\n'}Marocain</Text>
               <Text style={styles.heroSub}>Artisanat • Aventure • Authenticité</Text>
             </View>
@@ -282,27 +283,11 @@ export default function HomeScreen({ navigation }) {
             />
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: spacing.lg, gap: spacing.md }}>
               {trendingActivities.map(act => (
-                <TouchableOpacity
+                <ActivityCard
                   key={act.id}
-                  style={styles.activityCard}
-                  onPress={() => navigation.navigate('ProviderDetail', { provider: { id: act.providerId, ...act } })}
-                >
-                  <View style={[styles.activityIconBg, { backgroundColor: (colors[act.category] || colors.gold) + '22' }]}>
-                    {act.imageUrl ? (
-                      <Image source={{ uri: resolveImageUrl(act.imageUrl) }} style={styles.activityImg} />
-                    ) : (
-                      <Text style={{ fontSize: 28 }}>
-                        {CATEGORIES.find(c => c.id === act.category)?.emoji || '🎯'}
-                      </Text>
-                    )}
-                  </View>
-                  <Text style={styles.activityName} numberOfLines={2}>{act.name}</Text>
-                  <Text style={styles.activityPrice}>{act.price ? `${act.price} MAD` : 'Sur devis'}</Text>
-                  <View style={styles.activityMeta}>
-                    <Ionicons name="time-outline" size={11} color={colors.textMuted} />
-                    <Text style={styles.activityDuration}>{act.duration || '—'}</Text>
-                  </View>
-                </TouchableOpacity>
+                  activity={act}
+                  onPress={() => navigation.navigate('ActivityDetail', { activity: act })}
+                />
               ))}
             </ScrollView>
           </View>

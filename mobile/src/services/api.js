@@ -13,8 +13,8 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage, auth } from './firebase';
 import { haversineDistance } from '../utils/helpers';
 
-const BACKEND_URL = 'http://192.168.0.158:5000'; // Local dev backend
-const PROD_BACKEND_URL = 'https://hiwayti-backend.onrender.com';
+const BACKEND_URL = 'https://hiwayti-backend.onrender.com';
+const DEV_BACKEND_URL = 'http://192.168.0.158:5000';
 
 // ─── AUTH HEADER ──────────────────────────────────────────────────────────────
 async function authHeader() {
@@ -417,10 +417,14 @@ export function subscribeToProviderBookings(providerId, callback) {
 export async function fetchProviderAnalytics(providerId) {
   try {
     const headers = await authHeader();
-    const res = await fetch(`${BACKEND_URL}/api/analytics/provider/${providerId}`, { headers });
+    const res = await fetch(`${BACKEND_URL}/api/analytics/provider/${providerId}`, { 
+      headers,
+      signal: AbortSignal.timeout(5000) // 5s timeout
+    });
     if (!res.ok) throw new Error('Backend unavailable');
     return await res.json();
   } catch (e) {
+    console.warn('[ANALYTICS] Using Firestore fallback:', e.message);
     // Fallback: compute from Firestore
     const bookings = await fetchProviderBookings(providerId);
     const completed = bookings.filter(b => b.status === 'completed');

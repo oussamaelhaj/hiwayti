@@ -13,7 +13,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { colors, spacing, radius, typography } from '../utils/theme';
 import { haptic } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
-import { updateUserProfile, uploadImage } from '../services/api';
+import { updateUserProfile, uploadImage, fetchAllCommunes } from '../services/api';
 import AppButton from '../components/ui/AppButton';
 import GlassCard from '../components/ui/GlassCard';
 
@@ -24,7 +24,13 @@ export default function EditProfileScreen({ navigation }) {
   const [bio, setBio]                 = useState(userProfile?.bio || '');
   const [phone, setPhone]             = useState(userProfile?.phone || '');
   const [photoUri, setPhotoUri]       = useState(user?.photoURL || null);
+  const [communeId, setCommuneId]     = useState(userProfile?.communeId || '');
+  const [communes, setCommunes]       = useState([]);
   const [saving, setSaving]           = useState(false);
+
+  React.useEffect(() => {
+    fetchAllCommunes(50).then(setCommunes).catch(console.warn);
+  }, []);
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -61,6 +67,7 @@ export default function EditProfileScreen({ navigation }) {
         displayName,
         bio,
         phone,
+        communeId,
         photoURL: finalPhotoURL,
       });
 
@@ -88,6 +95,10 @@ export default function EditProfileScreen({ navigation }) {
         </View>
 
         <ScrollView contentContainerStyle={styles.content}>
+          <View style={styles.roleIndicator}>
+            <Ionicons name={userProfile?.role === 'provider' ? 'briefcase' : 'person'} size={14} color={colors.gold} />
+            <Text style={styles.roleText}>Profil {userProfile?.role === 'provider' ? 'Prestataire' : 'Passager'}</Text>
+          </View>
           {/* Avatar Section */}
           <View style={styles.avatarSection}>
             <TouchableOpacity onPress={pickImage} style={styles.avatarPicker}>
@@ -115,6 +126,21 @@ export default function EditProfileScreen({ navigation }) {
                 placeholder="Votre nom complet"
                 placeholderTextColor={colors.textMuted}
               />
+            </View>
+
+            <View style={styles.field}>
+              <Text style={styles.label}>Ville / Commune</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.communeScroll}>
+                {communes.map(c => (
+                  <TouchableOpacity
+                    key={c.id}
+                    style={[styles.communePill, communeId === c.id && styles.communePillActive]}
+                    onPress={() => { haptic.select(); setCommuneId(c.id); }}
+                  >
+                    <Text style={[styles.communeText, communeId === c.id && { color: colors.bg }]}>{c.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             </View>
 
             <View style={styles.field}>
@@ -174,6 +200,27 @@ const styles = StyleSheet.create({
   
   content: { padding: spacing.lg },
   
+  roleIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.gold + '15',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radius.full,
+    alignSelf: 'center',
+    marginBottom: spacing.lg,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: colors.gold + '33',
+  },
+  roleText: {
+    fontSize: 10,
+    fontFamily: typography.bold,
+    color: colors.gold,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
   avatarSection: { alignItems: 'center', marginBottom: spacing.xl },
   avatarPicker: { position: 'relative' },
   avatar: { width: 120, height: 120, borderRadius: 60, borderWidth: 3, borderColor: colors.goldBorder },
@@ -193,6 +240,30 @@ const styles = StyleSheet.create({
   formCard: { padding: spacing.md },
   field: { marginBottom: spacing.md },
   label: { ...typography.captionBold, color: colors.textMuted, marginBottom: spacing.xs, textTransform: 'uppercase' },
+  
+  communeScroll: {
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  communePill: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: radius.full,
+    backgroundColor: colors.bgInput,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  communePillActive: {
+    backgroundColor: colors.gold,
+    borderColor: colors.gold,
+  },
+  communeText: {
+    fontSize: 12,
+    fontFamily: typography.bodyMd,
+    color: colors.textPrimary,
+  },
+
   input: {
     ...typography.body, color: colors.textPrimary,
     backgroundColor: colors.bgInput, borderRadius: radius.md,
@@ -207,5 +278,5 @@ const styles = StyleSheet.create({
     padding: spacing.md, backgroundColor: colors.bgElevated, 
     borderRadius: radius.md, alignItems: 'flex-start' 
   },
-  infoText: { ...typography.caption, color: colors.textSecondary, flex: 1 },
+  infoText: { ...typography.caption, color: colors.textSecondary, flex: 1, lineHeight: 18 },
 });

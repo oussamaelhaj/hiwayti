@@ -151,11 +151,24 @@ export function AuthProvider({ children }) {
             const existingSnap = await getDoc(doc(db, 'users', data.uid));
             const existingData = existingSnap.data() || {};
             
-            await upsertUserDoc(data.uid, {
-              role: existingData.role || preferredRole || USER_ROLES.TOURIST,
-            });
-            setUserRole(existingData.role || preferredRole || USER_ROLES.TOURIST);
-            setUserProfile({ ...existingData, displayName: data.displayName, email: data.email, photoURL: data.photoURL, role: existingData.role || preferredRole || USER_ROLES.TOURIST });
+            // If user exists but is just a tourist and selected provider, upgrade them
+            let finalRole = existingData.role || preferredRole || USER_ROLES.TOURIST;
+            if (existingData.role === USER_ROLES.TOURIST && preferredRole === USER_ROLES.PROVIDER) {
+              finalRole = USER_ROLES.PROVIDER;
+            }
+
+            const updatedUser = {
+              uid: data.uid,
+              email: data.email,
+              displayName: data.displayName,
+              photoURL: data.photoURL,
+              role: finalRole,
+              updatedAt: serverTimestamp(),
+            };
+
+            await upsertUserDoc(data.uid, updatedUser);
+            setUserRole(finalRole);
+            setUserProfile({ ...existingData, ...updatedUser });
             WebBrowser.dismissBrowser();
             resolve();
           } else if (data.status === 'error') {

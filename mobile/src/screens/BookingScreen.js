@@ -30,6 +30,7 @@ function generateNext14Days() {
 export default function BookingScreen({ navigation, route }) {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const activity = route?.params?.activity || null;
   const provider = route?.params?.provider || null;
 
   const [tab, setTab] = useState('new'); // 'new' | 'my'
@@ -41,7 +42,7 @@ export default function BookingScreen({ navigation, route }) {
   const [loadingBookings, setLoadingBookings] = useState(false);
 
   const days = generateNext14Days();
-  const totalPrice = (provider?.price || 0) * participants;
+  const totalPrice = (activity?.price || provider?.price || 0) * participants;
 
   useEffect(() => {
     if (tab === 'my' && user) {
@@ -66,15 +67,17 @@ export default function BookingScreen({ navigation, route }) {
         parseInt(hours), parseInt(minutes)
       );
       await createBooking({
-        providerId: provider.id,
-        providerName: provider.name,
-        communeId: provider.communeId,
+        providerId: provider?.id,
+        activityId: activity?.id,
+        providerName: provider?.name,
+        activityName: activity?.name,
+        communeId: activity?.communeId || provider?.communeId,
         date: bookingDate.toISOString(),
         time: selectedTime,
         participants,
         totalPrice,
         currency: 'MAD',
-        category: provider.category,
+        category: activity?.category || provider?.category,
       });
       haptic.success();
       Alert.alert(
