@@ -285,20 +285,22 @@ export async function fetchPlatformStats() {
     if (snap.exists()) return snap.data();
   } catch (_) { /* no cached doc, fall through */ }
 
-  // 3. Count only collections that are publicly readable (providers, communes, activities)
+  // 3. Count collections
   try {
-    const [pSnap, cSnap, aSnap] = await Promise.all([
+    const [pSnap, cSnap, aSnap, bSnap] = await Promise.all([
       getCountFromServer(query(collection(db, 'providers'), where('verified', '==', true))),
       getCountFromServer(collection(db, 'communes')),
       getCountFromServer(query(collection(db, 'activities'), where('active', '==', true))),
+      getCountFromServer(collection(db, 'bookings')),
     ]);
     return {
       providers:  pSnap.data().count,
       communes:   cSnap.data().count,
       activities: aSnap.data().count,
-      bookings:   0,   // bookings count requires auth — skipped on client
+      bookings:   bSnap.data().count,
     };
   } catch (e) {
+    console.warn('[ANALYTICS] Fallback failed:', e.message);
     console.warn('[STATS]', e.message);
     return { providers: 0, communes: 0, activities: 0, bookings: 0 };
   }

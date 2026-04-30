@@ -114,7 +114,7 @@ export default function AdminDashboardScreen({ navigation }) {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabRow}>
           {[
             { id: 'overview', label: 'Dashboard', icon: 'apps' },
-            { id: 'approvals', label: 'Validations', icon: 'checkmark-shield', badge: unverified.length },
+            { id: 'approvals', label: 'Validations', icon: 'shield-checkmark', badge: unverified.length },
             { id: 'communes', label: 'Villes', icon: 'map' },
             { id: 'users', label: 'Utilisateurs', icon: 'people' },
           ].map(tab => (

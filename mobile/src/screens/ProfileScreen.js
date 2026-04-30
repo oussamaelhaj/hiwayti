@@ -189,7 +189,7 @@ export default function ProfileScreen({ navigation }) {
         <View style={styles.interfaceGrid}>
           {[
             { id: 'traveler', label: 'Voyageur', icon: 'airplane', desc: 'Explorer & Réserver', color: colors.accent },
-            { id: 'host', label: 'Hôte', icon: 'business', desc: 'Gérer mes activités', color: colors.gold, roleRequired: [USER_ROLES.PROVIDER, USER_ROLES.ARTISAN, USER_ROLES.ADMIN] },
+            { id: 'host', label: 'Hôte', icon: 'business', desc: 'Gérer mes activités', color: colors.gold, roleRequired: [USER_ROLES.PROVIDER, USER_ROLES.ARTISAN] },
             { id: 'admin', label: 'Admin', icon: 'shield-checkmark', desc: 'Contrôle plateforme', color: colors.danger, roleRequired: [USER_ROLES.ADMIN] },
           ].map(mode => {
             const isAccessible = !mode.roleRequired || (mode.roleRequired || []).includes(userRole);
