@@ -2,10 +2,10 @@
  * ProviderDashboardScreen.js v2 — HIWAYTI Provider Dashboard
  * Real analytics, activity management, real-time bookings
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  SafeAreaView, Dimensions, ActivityIndicator, TextInput, Alert, Image
+  SafeAreaView, Dimensions, ActivityIndicator, TextInput, Alert
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BarChart, LineChart } from 'react-native-chart-kit';
@@ -24,6 +24,8 @@ import {
 import GlassCard from '../components/ui/GlassCard';
 import AppButton from '../components/ui/AppButton';
 import StarRating from '../components/ui/StarRating';
+import Image from '../components/ui/Image';
+import WorldSwitcher from '../components/ui/WorldSwitcher';
 
 const { width } = Dimensions.get('window');
 const TABS = ['overview', 'bookings', 'activities', 'reviews', 'profile'];
@@ -38,6 +40,7 @@ export default function ProviderDashboardScreen({ navigation }) {
   const [analytics, setAnalytics]   = useState(null);
   const [loading, setLoading]       = useState(true);
   const [activeTab, setActiveTab]   = useState('overview');
+  const loadingRef = useRef(true);
 
   const isSetupComplete = userProfile?.providerSetupComplete === true;
   const [setupForm, setSetupForm] = useState({ name: '', category: CATEGORIES[0].id, commune: 'c1', desc: '' });
@@ -143,6 +146,7 @@ export default function ProviderDashboardScreen({ navigation }) {
   const load = useCallback(async () => {
     if (!user) return;
     setLoading(true);
+    loadingRef.current = true;
     console.log('[DASHBOARD] Loading data for provider:', providerId);
     try {
       // 1. Check if provider document exists first
@@ -150,12 +154,14 @@ export default function ProviderDashboardScreen({ navigation }) {
       if (pSnap.exists()) {
         setProviderProfile(pSnap.data());
       } else {
-        console.warn('[DASHBOARD] Provider doc not found at:', providerId);
-        // If doc doesn't exist, we might be in setup mode
+        // Only warn if we actually expected a provider doc to exist
         if (isSetupComplete) {
-          // Force incomplete if doc missing
-          console.log('[DASHBOARD] Setup was marked complete but doc is missing.');
+          console.warn('[DASHBOARD] Provider doc not found at:', providerId);
         }
+        setProviderProfile(null);
+        setLoading(false);
+        loadingRef.current = false;
+        return; 
       }
 
       // 2. Fetch related data (parallel, with individual catches to prevent global failure)
@@ -175,20 +181,22 @@ export default function ProviderDashboardScreen({ navigation }) {
       Alert.alert('Erreur de chargement', 'Impossible de charger vos données. Vérifiez votre connexion.');
     } finally {
       setLoading(false);
+      loadingRef.current = false;
     }
   }, [user, providerId, isSetupComplete]);
 
   useEffect(() => { 
     const timeout = setTimeout(() => {
-      if (loading) {
-        console.warn('[DASHBOARD] Loading timeout reached');
+      if (loadingRef.current) {
+        console.warn('[DASHBOARD] Loading timeout reached for provider:', providerId);
         setLoading(false);
+        loadingRef.current = false;
       }
-    }, 10000); // 10s safety timeout
+    }, 12000); // 12s safety timeout
 
     load(); 
     return () => clearTimeout(timeout);
-  }, [load]);
+  }, [load, providerId]);
 
   // ── Computed KPIs ──
   const totalRevenue   = analytics?.totalRevenue ?? bookings.filter(b => b.status === 'completed').reduce((s, b) => s + (b.totalPrice || 0), 0);
@@ -243,7 +251,7 @@ export default function ProviderDashboardScreen({ navigation }) {
     );
   }
 
-  if (!isSetupComplete) {
+  if (!isSetupComplete || !providerProfile) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
         <ScrollView contentContainerStyle={{ padding: spacing.xl, flexGrow: 1, justifyContent: 'center' }}>
@@ -317,7 +325,8 @@ export default function ProviderDashboardScreen({ navigation }) {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
+        <WorldSwitcher />
+        <View style={{ marginTop: 60 }}>
           <Text style={styles.headerSub}>Tableau de Bord</Text>
           <Text style={styles.headerTitle}>{userProfile?.name || user?.displayName || 'Mon Espace'}</Text>
         </View>
@@ -510,7 +519,15 @@ export default function ProviderDashboardScreen({ navigation }) {
               return (
                 <GlassCard key={act.id} style={styles.actPreview}>
                   <View style={styles.actPreviewLeft}>
-                    <Text style={{ fontSize: 24 }}>{cat?.emoji || '🎯'}</Text>
+                    <View style={styles.actThumbWrap}>
+                      <Image 
+                        source={{ uri: act.imageUrl || (act.imageUrls && act.imageUrls[0]) }} 
+                        style={styles.actThumb} 
+                      />
+                      <View style={styles.actCatBadge}>
+                        <Text style={{ fontSize: 10 }}>{cat?.emoji || '🎯'}</Text>
+                      </View>
+                    </View>
                     <View>
                       <Text style={styles.actName}>{act.name}</Text>
                       <Text style={styles.actMeta}>{cat?.labelFr} • {act.duration}</Text>
@@ -740,7 +757,10 @@ const styles = StyleSheet.create({
   addActBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   actPreview: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.md, marginBottom: spacing.sm, gap: spacing.md },
   actPreviewLeft: { flexDirection: 'row', gap: spacing.md, alignItems: 'center', flex: 1 },
-  actName: { ...typography.bodyMd, color: colors.textPrimary },
+  actThumbWrap: { width: 50, height: 50, borderRadius: 8, overflow: 'hidden', position: 'relative' },
+  actThumb: { width: '100%', height: '100%' },
+  actCatBadge: { position: 'absolute', bottom: -2, right: -2, backgroundColor: colors.bgCard, padding: 2, borderRadius: 6 },
+  actName: { ...typography.bodyBold, color: colors.textPrimary },
   actMeta: { ...typography.caption, color: colors.textMuted },
   actPrice: { ...typography.captionBold, color: colors.gold },
   actBookings: { ...typography.caption, color: colors.textMuted },

@@ -84,7 +84,7 @@ export default function FavoritesScreen({ navigation }) {
   const FilterPill = ({ id, label, icon }) => (
     <TouchableOpacity
       style={[styles.filterPill, filter === id && styles.filterPillActive]}
-      onPress={() => { haptic.selection(); setFilter(id); }}
+      onPress={() => { haptic.select(); setFilter(id); }}
     >
       <Ionicons name={icon} size={16} color={filter === id ? colors.bg : colors.textMuted} />
       <Text style={[styles.filterLabel, filter === id && styles.filterLabelActive]}>{label}</Text>

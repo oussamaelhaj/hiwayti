@@ -34,8 +34,9 @@ export function AuthProvider({ children }) {
   const [userRole, setUserRole]                   = useState(null);
   const [userProfile, setUserProfile]             = useState(null);
   const [loading, setLoading]                     = useState(true);
-  const [hasSeenOnboarding, setHasSeenOnboarding] = useState(false);
   const [onboardingLoading, setOnboardingLoading] = useState(true);
+  const [hasSeenOnboarding, setHasSeenOnboarding] = useState(false);
+  const [currentInterface, setCurrentInterface] = useState('traveler'); // 'traveler' | 'host' | 'admin'
   const pollRef = useRef(null);
 
   useEffect(() => {
@@ -78,6 +79,10 @@ export function AuthProvider({ children }) {
     AsyncStorage.getItem('hasSeenOnboarding').then(val => {
       setHasSeenOnboarding(val === 'true');
       setOnboardingLoading(false);
+    });
+
+    AsyncStorage.getItem('currentInterface').then(val => {
+      if (val) setCurrentInterface(val);
     });
 
     return () => {
@@ -206,6 +211,11 @@ export function AuthProvider({ children }) {
     }
   }
 
+  const switchInterface = async (mode) => {
+    setCurrentInterface(mode);
+    await AsyncStorage.setItem('currentInterface', mode);
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -222,6 +232,8 @@ export function AuthProvider({ children }) {
       updateUserRole,
       upsertUserDoc,
       refreshUser,
+      currentInterface,
+      switchInterface,
     }}>
       {children}
     </AuthContext.Provider>

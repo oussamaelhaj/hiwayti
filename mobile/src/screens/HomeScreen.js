@@ -5,7 +5,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, FlatList, TouchableOpacity,
-  RefreshControl, Animated, Dimensions, StatusBar, Image, ImageBackground,
+  RefreshControl, Animated, Dimensions, StatusBar, ImageBackground,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,9 +23,11 @@ import {
 import { getAIRecommendations } from '../services/aiEngine';
 import ProviderCard from '../components/cards/ProviderCard';
 import ActivityCard from '../components/cards/ActivityCard';
+import Image from '../components/ui/Image';
 import { ProviderCardSkeleton } from '../components/ui/SkeletonLoader';
 import GlassCard from '../components/ui/GlassCard';
 import ZelligePattern from '../components/ui/ZelligePattern';
+import WorldSwitcher from '../components/ui/WorldSwitcher';
 
 const { width } = Dimensions.get('window');
 
@@ -160,9 +162,11 @@ export default function HomeScreen({ navigation }) {
       >
         {/* ── HERO ─── */}
         <View style={styles.hero}>
-          <ImageBackground source={require('../../assets/home_hero_bg.jpg')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
-          <LinearGradient colors={['rgba(6,6,14,0.3)', 'rgba(6,6,14,0.8)']} style={StyleSheet.absoluteFillObject} />
-          <ZelligePattern opacity={0.15} size={100} color={colors.gold} />
+          <ImageBackground source={require('../../assets/luxury_hero.png')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+          <LinearGradient colors={['rgba(6,6,14,0.2)', 'rgba(6,6,14,0.9)']} style={StyleSheet.absoluteFillObject} />
+          <ZelligePattern opacity={0.12} size={80} color={colors.gold} />
+          
+          <WorldSwitcher />
           
           <View style={styles.heroTop}>
             <View>
@@ -175,6 +179,7 @@ export default function HomeScreen({ navigation }) {
               onPress={() => navigation.navigate('Notifications')}
             >
               <Ionicons name="notifications-outline" size={22} color={colors.textPrimary} />
+              <View style={styles.notifDot} />
             </TouchableOpacity>
           </View>
 
@@ -231,7 +236,7 @@ export default function HomeScreen({ navigation }) {
               onPress={() => navigation.navigate('Discover', { communeId: item.id })}
             >
               <Image
-                source={{ uri: item.coverImage || `https://images.unsplash.com/photo-1539020140153-e479b8c22e70?w=300` }}
+                source={resolveImageUrl(item.coverImage) || 'https://images.unsplash.com/photo-1539020140153-e479b8c22e70?w=300'}
                 style={styles.communeImage}
               />
               <LinearGradient colors={['transparent', 'rgba(6,6,14,0.9)']} style={styles.communeOverlay}>
@@ -403,9 +408,15 @@ const styles = StyleSheet.create({
   heroSub: { ...typography.caption, color: colors.textMuted, marginTop: 4 },
   notifBtn: {
     width: 44, height: 44, borderRadius: 22,
-    backgroundColor: colors.bgCard,
+    backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
+  },
+  notifDot: {
+    position: 'absolute', top: 12, right: 12,
+    width: 8, height: 8, borderRadius: 4,
+    backgroundColor: colors.accent,
+    borderWidth: 2, borderColor: colors.bgCard,
   },
 
   statsStrip: { paddingHorizontal: spacing.lg, gap: spacing.sm },

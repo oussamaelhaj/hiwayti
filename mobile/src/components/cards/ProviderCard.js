@@ -2,12 +2,12 @@
  * ProviderCard.js — Premium horizontal/vertical card for providers and artisans
  */
 import React from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import Image from '../ui/Image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, radius, typography, gradients } from '../../utils/theme';
-import { formatDistance, formatRating, formatPrice } from '../../utils/helpers';
-import { haptic } from '../../utils/helpers';
+import { formatDistance, formatRating, formatPrice, haptic } from '../../utils/helpers';
 
 const { width } = Dimensions.get('window');
 const CARD_W = width * 0.72;
@@ -39,7 +39,7 @@ export default function ProviderCard({
       {/* Cover Image */}
       <View style={[styles.imgWrap, { height: horizontal ? 160 : 140 }]}>
         {displayImage ? (
-          <Image source={{ uri: displayImage }} style={styles.img} resizeMode="cover" />
+        <Image source={{ uri: displayImage }} style={styles.img} resizeMode="cover" />
         ) : (
           <LinearGradient colors={gradients.moroccan} style={styles.img} />
         )}

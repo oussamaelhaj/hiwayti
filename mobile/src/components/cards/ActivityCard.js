@@ -3,19 +3,21 @@
  * Includes rating, price, category badge, and favorite toggle
  */
 import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import Image from '../ui/Image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, radius, typography, CATEGORIES, shadow } from '../../utils/theme';
 import { formatPrice, haptic } from '../../utils/helpers';
-import { resolveImageUrl } from '../../services/api';
 import GlassCard from '../ui/GlassCard';
 
 export default function ActivityCard({ activity, onPress, onFavPress, isFavorite, horizontal = false }) {
   const {
-    name, category, price, priceUnit = 'personne', imageUrl, rating = 0, reviewCount = 0,
-    duration, difficulty, commune
+    name, category, price, priceUnit = 'personne', imageUrl, imageUrls = [],
+    rating = 0, reviewCount = 0, duration, difficulty, commune
   } = activity;
+
+  const displayImage = imageUrl || (imageUrls.length > 0 ? imageUrls[0] : null);
 
   const catMeta = CATEGORIES.find(c => c.id === category) || {};
   const catColor = colors[category] || colors.gold;
@@ -30,7 +32,7 @@ export default function ActivityCard({ activity, onPress, onFavPress, isFavorite
       {/* Image Wrap */}
       <View style={horizontal ? styles.imageWrapHoriz : styles.imageWrap}>
         <Image
-          source={{ uri: resolveImageUrl(imageUrl) || 'https://images.unsplash.com/photo-1540553016722-983e48a2cd10?w=400' }}
+          source={{ uri: displayImage }}
           style={styles.image}
           resizeMode="cover"
         />

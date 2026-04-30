@@ -6,7 +6,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, Alert, ActivityIndicator, SafeAreaView, Switch, Modal,
-  KeyboardAvoidingView, Platform, Image
+  KeyboardAvoidingView, Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -20,6 +20,7 @@ import {
 } from '../services/api';
 import GlassCard from '../components/ui/GlassCard';
 import AppButton from '../components/ui/AppButton';
+import Image from '../components/ui/Image';
 
 const ACTIVITY_TYPES = [
   { id: 'session', label: 'Session', icon: 'time-outline' },
@@ -220,7 +221,7 @@ export default function ProviderActivitiesScreen({ navigation }) {
   const toggleLanguage = (lang) => {
     setForm(f => ({
       ...f,
-      languages: f.languages.includes(lang)
+      languages: (f.languages || []).includes(lang)
         ? f.languages.filter(l => l !== lang)
         : [...f.languages, lang],
     }));
@@ -271,9 +272,8 @@ export default function ProviderActivitiesScreen({ navigation }) {
                 <View style={styles.actTop}>
                   {act.imageUrl ? (
                     <Image 
-                      source={{ uri: resolveImageUrl(act.imageUrl) }} 
+                      source={{ uri: act.imageUrl }} 
                       style={styles.actEmoji} 
-                      onError={(e) => console.warn('Activity image load error:', e.nativeEvent.error)}
                     />
                   ) : (
                     <View style={[styles.actEmoji, { backgroundColor: (colors[act.category] || colors.gold) + '22' }]}>
@@ -360,7 +360,7 @@ export default function ProviderActivitiesScreen({ navigation }) {
                 <View style={styles.imageGrid}>
                   {form.imageUrls.map((uri, idx) => (
                     <View key={idx} style={styles.imageBox}>
-                      <Image source={{ uri: resolveImageUrl(uri) }} style={styles.previewImg} />
+                      <Image source={{ uri }} style={styles.previewImg} />
                       <TouchableOpacity style={styles.removeImgBtn} onPress={() => removeImage(idx)}>
                         <Ionicons name="close-circle" size={20} color={colors.danger} />
                       </TouchableOpacity>
@@ -534,10 +534,10 @@ export default function ProviderActivitiesScreen({ navigation }) {
                   {LANGUAGES_OPTS.map(lang => (
                     <TouchableOpacity
                       key={lang}
-                      style={[styles.pill, form.languages.includes(lang) && styles.pillActive]}
+                      style={[styles.pill, (form.languages || []).includes(lang) && styles.pillActive]}
                       onPress={() => toggleLanguage(lang)}
                     >
-                      <Text style={[styles.pillText, form.languages.includes(lang) && { color: colors.bg }]}>{lang}</Text>
+                      <Text style={[styles.pillText, (form.languages || []).includes(lang) && { color: colors.bg }]}>{lang}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>

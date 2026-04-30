@@ -14,7 +14,7 @@ import { db, storage, auth } from './firebase';
 import { haversineDistance } from '../utils/helpers';
 
 const BACKEND_URL = 'https://hiwayti-backend.onrender.com';
-const DEV_BACKEND_URL = 'http://192.168.0.158:5000';
+const DEV_BACKEND_URL = 'http://10.0.2.2:3001'; // Default for Android Emulator, adjust for physical device
 
 // ─── AUTH HEADER ──────────────────────────────────────────────────────────────
 async function authHeader() {
@@ -58,8 +58,6 @@ export async function updateUserPreferences(uid, prefs) {
 export async function fetchFeaturedProviders(count = 6) {
   const q = query(
     collection(db, 'providers'),
-    where('verified', '==', true),
-    where('featured', '==', true),
     orderBy('rating', 'desc'),
     limit(count)
   );
@@ -71,7 +69,6 @@ export async function fetchProvidersByCategory(category, count = 20) {
   const q = query(
     collection(db, 'providers'),
     where('category', '==', category),
-    where('verified', '==', true),
     orderBy('rating', 'desc'),
     limit(count)
   );
@@ -171,12 +168,18 @@ export async function fetchActivitiesByCategory(category, count = 30) {
   const providerIds = [...new Set(acts.map(a => a.providerId).filter(Boolean))];
   if (providerIds.length === 0) return acts;
   
-  // Max 30 for 'in' query, perfectly matches our limit
+  // Max 30 for 'in' query
   const pq = query(collection(db, 'providers'), where(documentId(), 'in', providerIds.slice(0, 30)));
   const psnap = await getDocs(pq);
-  const validProviders = new Set(psnap.docs.filter(d => d.data().verified).map(d => d.id));
+  const providerMap = {};
+  psnap.forEach(d => { providerMap[d.id] = d.data(); });
 
-  return acts.filter(a => validProviders.has(a.providerId));
+  // For now, show all active activities even if provider is not verified
+  return acts.map(a => ({
+    ...a,
+    providerName: a.providerName || providerMap[a.providerId]?.displayName || providerMap[a.providerId]?.name || 'Prestataire',
+    providerRating: providerMap[a.providerId]?.rating || 0
+  }));
 }
 
 /**
@@ -344,7 +347,6 @@ export async function fetchTopArtisans(count = 8) {
   const q = query(
     collection(db, 'providers'),
     where('role', '==', 'artisan'),
-    where('verified', '==', true),
     orderBy('rating', 'desc'),
     limit(count)
   );
@@ -553,7 +555,7 @@ export async function toggleFavorite(uid, itemId, type) {
   const snap = await getDoc(ref_);
   const favorites = snap.data()?.favorites || [];
   const key = `${type}:${itemId}`;
-  const isFav = favorites.includes(key);
+  const isFav = Array.isArray(favorites) && favorites.includes(key);
   await updateDoc(ref_, {
     favorites: isFav ? arrayRemove(key) : arrayUnion(key),
     updatedAt: serverTimestamp(),
@@ -600,7 +602,7 @@ export async function uploadImage(uri, path) {
     console.error('[UPLOAD_ERROR]', error);
     
     // If it's a "storage unknown" error, it likely means the bucket isn't initialized
-    if (error.code === 'storage/unknown' || error.message.includes('unknown')) {
+    if (error.code === 'storage/unknown' || (error.message && typeof error.message === 'string' && error.message.includes('unknown'))) {
       throw new Error(
         "Erreur Firebase Storage : Le service n'est peut-être pas activé dans votre console Firebase ou le nom du bucket est incorrect. " +
         "Vérifiez que vous avez cliqué sur 'Commencer' dans l'onglet Storage de la console Firebase."
@@ -618,16 +620,23 @@ export async function uploadImage(uri, path) {
 export function resolveImageUrl(url) {
   if (!url) return null;
   if (typeof url !== 'string') return null;
+  
+  // Handle gs:// urls manually for speed if SDK is not used
   if (url.startsWith('gs://')) {
     try {
       const parts = url.split('gs://')[1].split('/');
       const bucket = parts[0];
       const filePath = encodeURIComponent(parts.slice(1).join('/'));
+      // Add token parameter if it exists in the URL string or just return public link
       return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${filePath}?alt=media`;
     } catch (e) {
       return url;
     }
   }
+  
+  // Handle potential local file uris that leaked to DB
+  if (url.startsWith('file://')) return null;
+
   return url;
 }
 
@@ -671,7 +680,7 @@ export async function logPassengerVisit(data) {
     const snap = await getDoc(prefDoc);
     const prefs = snap.data() || {};
     const cats = prefs.preferredCategories || [];
-    if (!cats.includes(data.category)) {
+    if (Array.isArray(cats) && !cats.includes(data.category)) {
       await setDoc(prefDoc, {
         preferredCategories: arrayUnion(data.category),
         updatedAt: serverTimestamp(),

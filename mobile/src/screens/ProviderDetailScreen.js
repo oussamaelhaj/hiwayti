@@ -5,14 +5,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Dimensions, Image, Animated, StatusBar,
+  Dimensions, Image, Animated, StatusBar, ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { colors, spacing, radius, typography, shadow, CATEGORIES, gradients } from '../utils/theme';
 import { haptic, formatDistance, formatPrice, formatRating } from '../utils/helpers';
-import { fetchReviews, toggleFavorite, resolveImageUrl } from '../services/api';
+import {
+  fetchProviderById, fetchReviews, toggleFavorite,
+  fetchProviderActivities, resolveImageUrl
+} from '../services/api';
+import ActivityCard from '../components/cards/ActivityCard';
 import { useAuth } from '../context/AuthContext';
 import StarRating from '../components/ui/StarRating';
 import AppButton from '../components/ui/AppButton';
@@ -47,6 +51,19 @@ export default function ProviderDetailScreen({ navigation, route }) {
   const coverOpacity   = scrollY.interpolate({ inputRange: [0, COVER_H * 0.6], outputRange: [1, 0.4], extrapolate: 'clamp' });
   const headerOpacity  = scrollY.interpolate({ inputRange: [COVER_H * 0.5, COVER_H * 0.8], outputRange: [0, 1], extrapolate: 'clamp' });
 
+  const [activities, setActivities] = useState([]);
+  const [loadingAct, setLoadingAct] = useState(true);
+
+  useEffect(() => {
+    if (id) {
+      setLoadingAct(true);
+      fetchProviderActivities(id)
+        .then(setActivities)
+        .catch(console.warn)
+        .finally(() => setLoadingAct(false));
+    }
+  }, [id]);
+
   useEffect(() => {
     if (id) {
       fetchReviews(id, 10)
@@ -68,7 +85,19 @@ export default function ProviderDetailScreen({ navigation, route }) {
 
   const handleBook = () => {
     haptic.medium();
-    navigation.navigate('Booking', { provider });
+    // Sanitize provider data — ensure all image fields are strings
+    const cleanProvider = {
+      id: id || provider?.id,
+      name: name || provider?.name || provider?.displayName || 'Prestataire',
+      rating: rating || 0,
+      category: category,
+      commune: commune,
+      avatarUrl: typeof provider?.avatarUrl === 'string' ? provider.avatarUrl : null,
+      coverImage: typeof coverImage === 'string' ? coverImage : null,
+      price: provider?.price || 0,
+      priceUnit: provider?.priceUnit || 'session',
+    };
+    navigation.navigate('BookingFlow', { provider: cleanProvider });
   };
 
   return (
@@ -96,7 +125,7 @@ export default function ProviderDetailScreen({ navigation, route }) {
         {/* ── COVER IMAGE ── */}
         <Animated.View style={[styles.coverWrap, { transform: [{ translateY: coverTranslate }], opacity: coverOpacity }]}>
           {coverImage ? (
-            <Image source={{ uri: coverImage }} style={styles.cover} resizeMode="cover" />
+            <Image source={{ uri: resolveImageUrl(coverImage) }} style={styles.cover} resizeMode="cover" />
           ) : (
             <LinearGradient colors={gradients.moroccan} style={styles.cover} />
           )}
@@ -172,6 +201,26 @@ export default function ProviderDetailScreen({ navigation, route }) {
               </View>
             )}
           </GlassCard>
+
+          {/* Activities Section */}
+          <View style={{ marginBottom: spacing.lg }}>
+            <Text style={styles.sectionTitle}>Nos Activités</Text>
+            {loadingAct ? (
+              <ActivityIndicator color={colors.gold} style={{ marginTop: spacing.md }} />
+            ) : activities.length === 0 ? (
+              <Text style={styles.noReviews}>Aucune activité publiée pour le moment.</Text>
+            ) : (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.md }}>
+                {activities.map(act => (
+                  <ActivityCard 
+                    key={act.id} 
+                    activity={act} 
+                    onPress={() => navigation.navigate('ActivityDetail', { activity: act })}
+                  />
+                ))}
+              </ScrollView>
+            )}
+          </View>
 
           {/* Description */}
           {description && (

@@ -5,7 +5,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, Image, Alert, ActivityIndicator, SafeAreaView,
+  TextInput, Alert, ActivityIndicator, SafeAreaView,
   KeyboardAvoidingView, Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +16,7 @@ import { useAuth } from '../context/AuthContext';
 import { updateUserProfile, uploadImage, fetchAllCommunes } from '../services/api';
 import AppButton from '../components/ui/AppButton';
 import GlassCard from '../components/ui/GlassCard';
+import Image from '../components/ui/Image';
 
 export default function EditProfileScreen({ navigation }) {
   const { user, userProfile, refreshUser } = useAuth();
@@ -137,7 +138,9 @@ export default function EditProfileScreen({ navigation }) {
                     style={[styles.communePill, communeId === c.id && styles.communePillActive]}
                     onPress={() => { haptic.select(); setCommuneId(c.id); }}
                   >
-                    <Text style={[styles.communeText, communeId === c.id && { color: colors.bg }]}>{c.name}</Text>
+                    <Text style={[styles.communeText, communeId === c.id && { color: colors.bg }]}>
+                      {c.name || 'Sans nom'}
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>

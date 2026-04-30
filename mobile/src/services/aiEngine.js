@@ -90,7 +90,7 @@ export async function getNearbyArtisanSuggestions(lat, lng, preferredCategories 
         const dist = data.location
           ? haversineDistance(lat, lng, data.location.latitude, data.location.longitude)
           : 999999;
-        const catBonus = preferredCategories.includes(data.category) ? 50000 : 0;
+        const catBonus = (preferredCategories || []).includes(data.category) ? 50000 : 0;
         const score = (data.rating || 0) * 5000 - dist + catBonus;
         return { id: d.id, ...data, distanceMeters: dist, aiScore: score };
       })

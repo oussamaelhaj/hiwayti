@@ -46,7 +46,13 @@ export default function DiscoverScreen({ navigation }) {
   useEffect(() => { load(); }, [activeCategory]);
 
   const sorted = [...providers]
-    .filter(p => !search || p.name?.toLowerCase().includes(search.toLowerCase()) || p.commune?.toLowerCase().includes(search.toLowerCase()))
+    .filter(p => {
+      if (!search) return true;
+      const q = search.toLowerCase();
+      const nameMatch = (p.name || '').toLowerCase().includes(q);
+      const communeMatch = (p.commune || '').toLowerCase().includes(q);
+      return nameMatch || communeMatch;
+    })
     .sort((a, b) => {
       if (sortKey === 'rating')      return (b.rating || 0) - (a.rating || 0);
       if (sortKey === 'price_asc')   return (a.price || 0) - (b.price || 0);

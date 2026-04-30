@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Image, SafeAreaView, Alert, Switch, ActivityIndicator, ImageBackground,
+  SafeAreaView, Alert, Switch, ActivityIndicator, ImageBackground,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +21,8 @@ import {
 import GlassCard from '../components/ui/GlassCard';
 import AppButton from '../components/ui/AppButton';
 import i18n from '../i18n';
+import Image from '../components/ui/Image';
+import WorldSwitcher from '../components/ui/WorldSwitcher';
 
 const LANGUAGES = [
   { code: 'fr', label: 'Français',  flag: '🇫🇷' },
@@ -48,7 +50,7 @@ const ROLE_LABELS = {
 
 export default function ProfileScreen({ navigation }) {
   const { t } = useTranslation();
-  const { user, userRole, userProfile, signOut } = useAuth();
+  const { user, userRole, userProfile, signOut, currentInterface, switchInterface } = useAuth();
 
   const [prefs, setPrefs]         = useState(null);
   const [notifs, setNotifs]       = useState(true);
@@ -146,7 +148,6 @@ export default function ProfileScreen({ navigation }) {
                 <Image 
                   source={{ uri: userProfile.photoURL }} 
                   style={styles.avatar} 
-                  onError={(e) => console.warn('Avatar load error:', e.nativeEvent.error)}
                 />
               ) : (
                 <LinearGradient colors={[colors.goldLight, colors.gold]} style={styles.avatar}>
@@ -183,6 +184,41 @@ export default function ProfileScreen({ navigation }) {
             </View>
           </ImageBackground>
         </View>
+        {/* ── MODES D'INTERFACE ── */}
+        <Text style={styles.sectionLabel}>MODES D'INTERFACE</Text>
+        <View style={styles.interfaceGrid}>
+          {[
+            { id: 'traveler', label: 'Voyageur', icon: 'airplane', desc: 'Explorer & Réserver', color: colors.accent },
+            { id: 'host', label: 'Hôte', icon: 'business', desc: 'Gérer mes activités', color: colors.gold, roleRequired: [USER_ROLES.PROVIDER, USER_ROLES.ARTISAN, USER_ROLES.ADMIN] },
+            { id: 'admin', label: 'Admin', icon: 'shield-checkmark', desc: 'Contrôle plateforme', color: colors.danger, roleRequired: [USER_ROLES.ADMIN] },
+          ].map(mode => {
+            const isAccessible = !mode.roleRequired || (mode.roleRequired || []).includes(userRole);
+            const isActive = currentInterface === mode.id;
+            
+            if (!isAccessible) return null;
+
+            return (
+              <TouchableOpacity 
+                key={mode.id}
+                style={[styles.interfaceCard, isActive && { borderColor: mode.color }]}
+                onPress={() => { haptic.select(); switchInterface(mode.id); }}
+              >
+                <GlassCard style={styles.interfaceCardInner} noBlur={!isActive}>
+                  <View style={[styles.interfaceIcon, { backgroundColor: mode.color + '22' }]}>
+                    <Ionicons name={mode.icon} size={24} color={isActive ? mode.color : colors.textMuted} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.interfaceLabel, isActive && { color: mode.color }]}>{mode.label}</Text>
+                    <Text style={styles.interfaceDesc}>{mode.desc}</Text>
+                  </View>
+                  {isActive && (
+                    <View style={[styles.activeDot, { backgroundColor: mode.color }]} />
+                  )}
+                </GlassCard>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
 
         {/* ── MON COMPTE ── */}
         <Text style={styles.sectionLabel}>MON COMPTE</Text>
@@ -210,9 +246,9 @@ export default function ProfileScreen({ navigation }) {
           <>
             <Text style={styles.sectionLabel}>MON ESPACE PRO</Text>
             <GlassCard style={styles.menuCard} goldBorder>
-              <MenuRow icon="grid-outline"         label="Tableau de bord"  color={colors.gold}   onPress={() => navigation.navigate('ProviderDashboard')} />
+              <MenuRow icon="grid-outline"         label="Tableau de bord"  color={colors.gold}   onPress={async () => { haptic.select(); await switchInterface('host'); navigation.navigate('ProviderDashboard'); }} />
               <View style={styles.divider} />
-              <MenuRow icon="tennisball-outline"   label="Mes Activités"    color={colors.accent} onPress={() => navigation.navigate('ProviderActivities')} />
+              <MenuRow icon="tennisball-outline"   label="Mes Activités"    color={colors.accent} onPress={async () => { haptic.select(); await switchInterface('host'); navigation.navigate('ProviderActivities'); }} />
             </GlassCard>
           </>
         )}
@@ -220,7 +256,7 @@ export default function ProfileScreen({ navigation }) {
           <>
             <Text style={styles.sectionLabel}>ESPACE COMMUNE</Text>
             <GlassCard style={styles.menuCard} goldBorder>
-              <MenuRow icon="business-outline" label="Tableau de bord commune" color={colors.gold} onPress={() => navigation.navigate('CommuneDashboard')} />
+              <MenuRow icon="business-outline" label="Tableau de bord commune" color={colors.gold} onPress={() => { haptic.select(); switchInterface('admin'); }} />
             </GlassCard>
           </>
         )}
@@ -395,4 +431,11 @@ const styles = StyleSheet.create({
   deleteBtn: { alignItems: 'center', marginTop: spacing.lg },
   deleteText: { ...typography.body, color: colors.danger + 'bb' },
   version: { ...typography.caption, color: colors.textMuted, textAlign: 'center', marginTop: spacing.xl },
+  interfaceGrid: { paddingHorizontal: spacing.lg, gap: spacing.sm },
+  interfaceCard: { borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', overflow: 'hidden' },
+  interfaceCardInner: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, gap: spacing.md },
+  interfaceIcon: { width: 44, height: 44, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
+  interfaceLabel: { ...typography.bodyBold, color: colors.textPrimary },
+  interfaceDesc: { ...typography.caption, color: colors.textMuted },
+  activeDot: { width: 8, height: 8, borderRadius: 4, position: 'absolute', top: 12, right: 12 },
 });

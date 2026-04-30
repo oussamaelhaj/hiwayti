@@ -29,7 +29,7 @@ service cloud.firestore {
     match /providers/{providerId} {
       allow read: if true;
       allow create: if isAuthenticated();
-      allow update: if isAdmin() || (isAuthenticated() && (resource.data.ownerId == request.auth.uid || request.auth.uid == providerId));
+      allow update: if isAdmin() || (isAuthenticated() && (resource.data.ownerId == request.auth.uid || request.auth.uid == providerId)) || (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bookingCount']));
       allow delete: if isAdmin();
     }
 
@@ -37,7 +37,7 @@ service cloud.firestore {
     match /activities/{activityId} {
       allow read: if true;
       allow create: if isAuthenticated();
-      allow update: if isAdmin() || (isAuthenticated() && resource.data.providerId == request.auth.uid);
+      allow update: if isAdmin() || (isAuthenticated() && resource.data.providerId == request.auth.uid) || (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bookingCount']));
       allow delete: if isAdmin() || (isAuthenticated() && resource.data.providerId == request.auth.uid);
     }
 

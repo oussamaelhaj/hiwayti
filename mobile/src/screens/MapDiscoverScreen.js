@@ -132,11 +132,10 @@ export default function MapDiscoverScreen({ navigation }) {
   const filteredProviders = providers.filter(p => {
     if (!searchText) return true;
     const q = searchText.toLowerCase();
-    return (
-      p.name?.toLowerCase().includes(q) ||
-      p.commune?.toLowerCase().includes(q) ||
-      p.category?.toLowerCase().includes(q)
-    );
+    const nameMatch     = (p.name || '').toLowerCase().includes(q);
+    const communeMatch  = (p.commune || '').toLowerCase().includes(q);
+    const categoryMatch = (p.category || '').toLowerCase().includes(q);
+    return nameMatch || communeMatch || categoryMatch;
   });
 
   const getCatColor = (cat) => colors[cat] || colors.gold;

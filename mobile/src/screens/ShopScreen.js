@@ -59,8 +59,10 @@ export default function ShopScreen({ navigation }) {
 
   const filtered = products.filter(p => {
     if (!search) return true;
-    return p.name?.toLowerCase().includes(search.toLowerCase()) ||
-      p.artisanName?.toLowerCase().includes(search.toLowerCase());
+    const q = search.toLowerCase();
+    const nameMatch = (p.name || '').toLowerCase().includes(q);
+    const artisanMatch = (p.artisanName || '').toLowerCase().includes(q);
+    return nameMatch || artisanMatch;
   });
 
   return (

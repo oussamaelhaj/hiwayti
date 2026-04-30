@@ -47,6 +47,10 @@ export const colors = {
   textiles: '#9B59B6',
   cuisine: '#FF6B6B',
   music: '#FF8CC8',
+  chalet: '#D2691E',
+  hotel: '#4169E1',
+  nature: '#2E8B57',
+  luxury: '#FFD700',
 
   // Moroccan Artisan Palette
   terracotta: '#E2725B',        // Red of Marrakech
@@ -143,9 +147,11 @@ export const CATEGORIES = [
   { id: 'hiking', labelFr: 'Atlas Trek', labelAr: 'المشي', icon: 'trail-sign', color: colors.hiking, emoji: '🏔️' },
   { id: 'pottery', labelFr: 'Art du Feu', labelAr: 'الفخار', icon: 'color-palette', color: colors.pottery, emoji: '🏺' },
   { id: 'leather', labelFr: 'Cuir & Peau', labelAr: 'الجلد', icon: 'briefcase', color: colors.leather, emoji: '👜' },
-  { id: 'textiles', labelFr: 'Tissage', labelAr: 'النسيج', icon: 'shirt', color: colors.textiles, emoji: '🧵' },
   { id: 'cuisine', labelFr: 'Saveurs', labelAr: 'الطهي', icon: 'restaurant', color: colors.cuisine, emoji: '🍽️' },
-  { id: 'music', labelFr: 'Rythmes', labelAr: 'الموسيقى', icon: 'musical-notes', color: colors.music, emoji: '🎵' },
+  { id: 'chalet', labelFr: 'Chalets & Gîtes', labelAr: 'شاليهات', icon: 'home', color: colors.chalet, emoji: '🏡' },
+  { id: 'hotel', labelFr: 'Hotels & Riads', labelAr: 'فنادق', icon: 'bed', color: colors.hotel, emoji: '🏨' },
+  { id: 'nature', labelFr: 'Nature & Parc', labelAr: 'طبيعة', icon: 'leaf', color: colors.nature, emoji: '🌿' },
+  { id: 'luxury', labelFr: 'Expériences VIP', labelAr: 'تجربة فاخرة', icon: 'diamond', color: colors.luxury, emoji: '✨' },
 ];
 
 // ─── USER ROLES ─────────────────────────────────────────────────────────────

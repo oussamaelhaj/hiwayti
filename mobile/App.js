@@ -36,6 +36,7 @@ import EditProfileScreen         from './src/screens/EditProfileScreen';
 import ActivityDetailScreen      from './src/screens/ActivityDetailScreen';
 import FavoritesScreen           from './src/screens/FavoritesScreen';
 import MyBookingsScreen          from './src/screens/MyBookingsScreen';
+import AdminDashboardScreen     from './src/screens/AdminDashboardScreen';
 
 // ── Navigators ────────────────────────────────────────────────────────────────
 const Tab   = createBottomTabNavigator();
@@ -86,6 +87,7 @@ const TAB_ICONS = {
   Profile:   ['person',      'person-outline'],
   Dashboard: ['grid',        'grid-outline'],
   Commune:   ['business',    'business-outline'],
+  Admin:     ['shield-checkmark', 'shield-checkmark-outline'],
 };
 
 function getIcon(route, focused) {
@@ -135,9 +137,6 @@ function ProfileStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ProfileMain"           component={ProfileScreen} />
-      <Stack.Screen name="ProviderDashboard"     component={ProviderDashboardScreen} />
-      <Stack.Screen name="ProviderActivities"    component={ProviderActivitiesScreen} options={{ presentation: 'modal' }} />
-      <Stack.Screen name="CommuneDashboard"      component={CommuneDashboardScreen} />
       <Stack.Screen name="Favorites"             component={FavoritesScreen} />
     </Stack.Navigator>
   );
@@ -145,12 +144,20 @@ function ProfileStack() {
 
 // ── SHARED SCREENS (Accessible from any tab) ──────────────────────────────────
 // We put these here so MapTab, ShopTab, etc. can all reach them.
-function AuthenticatedStack({ userRole }) {
+function AuthenticatedStack() {
+  const { currentInterface, userRole } = useAuth();
+  
+  // Guard: if user doesn't have the role, force traveler mode (except for admin who can see all)
+  const isHost  = [USER_ROLES.PROVIDER, USER_ROLES.ARTISAN].includes(userRole);
+  const isAdmin = userRole === USER_ROLES.ADMIN;
+  
+  let TabsComponent = TravelerTabs;
+  if (currentInterface === 'host' && (isHost || isAdmin)) TabsComponent = HostTabs;
+  if (currentInterface === 'admin' && isAdmin) TabsComponent = AdminTabs;
+
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="MainTabs">
-        {props => <MainTabs {...props} userRole={userRole} />}
-      </Stack.Screen>
+      <Stack.Screen name="MainTabs" component={TabsComponent} />
       <Stack.Screen 
         name="ProviderDetail" 
         component={ProviderDetailScreen} 
@@ -176,6 +183,25 @@ function AuthenticatedStack({ userRole }) {
         component={NotificationsScreen} 
         options={{ presentation: 'modal' }} 
       />
+      <Stack.Screen 
+        name="ProviderActivities" 
+        component={ProviderActivitiesScreen} 
+        options={{ presentation: 'modal' }} 
+      />
+      <Stack.Screen 
+        name="ProviderDashboard" 
+        component={ProviderDashboardScreen} 
+      />
+      <Stack.Screen 
+        name="BookingFlow" 
+        component={BookingScreen} 
+        options={{ presentation: 'card', animation: 'slide_from_right' }}
+      />
+      <Stack.Screen 
+        name="MyBookings" 
+        component={MyBookingsScreen} 
+        options={{ presentation: 'card', animation: 'slide_from_right' }}
+      />
     </Stack.Navigator>
   );
 }
@@ -199,11 +225,8 @@ function CommuneStack() {
   );
 }
 
-// ── MAIN TABS ─────────────────────────────────────────────────────────────────
-function MainTabs({ userRole }) {
-  const isDashboardRole = [USER_ROLES.ARTISAN, USER_ROLES.PROVIDER].includes(userRole);
-  const isCommuneRole   = [USER_ROLES.COMMUNE, USER_ROLES.ADMIN].includes(userRole);
-
+// ── TRAVELER TABS ───────────────────────────────────────────────────────────
+function TravelerTabs() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -216,12 +239,7 @@ function MainTabs({ userRole }) {
           <BlurView tint="dark" intensity={90} style={StyleSheet.absoluteFillObject} />
         ),
         tabBarIcon: ({ focused, color, size }) => (
-          <TabIcon
-            name={getIcon(route, focused)}
-            focused={focused}
-            color={color}
-            size={26}
-          />
+          <TabIcon name={getIcon(route, focused)} focused={focused} color={color} size={26} />
         ),
       })}
     >
@@ -231,16 +249,57 @@ function MainTabs({ userRole }) {
       <Tab.Screen name="Shop"     component={ShopStack} />
       <Tab.Screen name="Booking"  component={BookingStack} />
       <Tab.Screen name="Profile"  component={ProfileStack} />
+    </Tab.Navigator>
+  );
+}
 
-      {/* Provider Dashboard tab — only for artisans & sports providers */}
-      {isDashboardRole && (
-        <Tab.Screen name="Dashboard" component={ProviderStack} />
-      )}
+// ── HOST TABS (Provider) ─────────────────────────────────────────────────────
+function HostTabs() {
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarActiveTintColor:   colors.gold,
+        tabBarInactiveTintColor: 'rgba(255,255,255,0.35)',
+        tabBarStyle:             styles.floatingTabBar,
+        tabBarShowLabel:         false,
+        tabBarBackground: () => (
+          <BlurView tint="dark" intensity={90} style={StyleSheet.absoluteFillObject} />
+        ),
+        tabBarIcon: ({ focused, color, size }) => (
+          <TabIcon name={getIcon(route, focused)} focused={focused} color={color} size={26} />
+        ),
+      })}
+    >
+      <Tab.Screen name="Dashboard" component={ProviderStack} />
+      <Tab.Screen name="Booking"   component={BookingStack} />
+      <Tab.Screen name="Profile"   component={ProfileStack} />
+    </Tab.Navigator>
+  );
+}
 
-      {/* Commune Dashboard tab — only for commune partners */}
-      {isCommuneRole && (
-        <Tab.Screen name="Commune" component={CommuneStack} />
-      )}
+// ── ADMIN TABS ───────────────────────────────────────────────────────────────
+function AdminTabs() {
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarActiveTintColor:   colors.gold,
+        tabBarInactiveTintColor: 'rgba(255,255,255,0.35)',
+        tabBarStyle:             styles.floatingTabBar,
+        tabBarShowLabel:         false,
+        tabBarBackground: () => (
+          <BlurView tint="dark" intensity={90} style={StyleSheet.absoluteFillObject} />
+        ),
+        tabBarIcon: ({ focused, color, size }) => (
+          <TabIcon name={getIcon(route, focused)} focused={focused} color={color} size={26} />
+        ),
+      })}
+    >
+      <Tab.Screen name="Admin"     component={AdminDashboardScreen} />
+      <Tab.Screen name="Commune"   component={CommuneStack} />
+      <Tab.Screen name="Home"      component={HomeStack} />
+      <Tab.Screen name="Profile"   component={ProfileStack} />
     </Tab.Navigator>
   );
 }
@@ -269,7 +328,7 @@ function RootNavigator() {
         <OnboardingScreen onFinish={completeOnboarding} />
       ) : (
         // Authenticated — global stack + role-based tabs
-        <AuthenticatedStack userRole={userRole} />
+        <AuthenticatedStack />
       )}
     </NavigationContainer>
   );
