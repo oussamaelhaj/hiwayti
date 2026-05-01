@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HIWAYTI - Présentation Visuelle</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --primary: #D4AF37; /* Gold */
+            --secondary: #2C3E50; /* Deep Blue/Grey */
+            --accent: #E67E22; /* Moroccan Orange */
+            --bg: #0F172A;
+            --card-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #F8FAFC;
+            --text-dim: #94A3B8;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        h1, h2, h3 {
+            font-family: 'Playfair Display', serif;
+        }
+
+        .hero {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            background: linear-gradient(to bottom, rgba(15, 23, 42, 0.8), var(--bg)),
+                        url('hiwayti_heritage_marocain_hero.png');
+            background-size: cover;
+            background-position: center;
+            padding: 2rem;
+            position: relative;
+        }
+
+        .hero h1 {
+            font-size: 5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, #D4AF37, #F39C12, #E67E22);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: fadeInDown 1.2s ease-out;
+        }
+
+        .hero p {
+            font-size: 1.5rem;
+            color: var(--text-dim);
+            max-width: 800px;
+            animation: fadeInUp 1.2s ease-out 0.3s backwards;
+        }
+
+        .scroll-indicator {
+            position: absolute;
+            bottom: 2rem;
+            animation: bounce 2s infinite;
+        }
+
+        .section {
+            padding: 6rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 3rem;
+            margin-bottom: 4rem;
+            position: relative;
+        }
+
+        .section-title::after {
+            content: '';
+            display: block;
+            width: 80px;
+            height: 4px;
+            background: var(--primary);
+            margin: 1rem auto;
+        }
+
+        /* Ecosystem / Roles */
+        .grid-roles {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+        }
+
+        .role-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            padding: 2.5rem;
+            border-radius: 24px;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-align: center;
+        }
+
+        .role-card:hover {
+            transform: translateY(-15px);
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--primary);
+        }
+
+        .role-icon {
+            width: 70px;
+            height: 70px;
+            background: rgba(212, 175, 55, 0.1);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            color: var(--primary);
+        }
+
+        /* Architecture Schema */
+        .arch-container {
+            position: relative;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 3rem;
+            border-radius: 32px;
+            border: 1px dashed var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            gap: 4rem;
+            align-items: center;
+        }
+
+        .node {
+            padding: 1.5rem 3rem;
+            border-radius: 16px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .node.frontend { background: #3498db; border: 2px solid #2980b9; }
+        .node.backend { background: #e74c3c; border: 2px solid #c0392b; }
+        .node.external { background: #9b59b6; border: 2px solid #8e44ad; }
+
+        .connector {
+            width: 2px;
+            height: 40px;
+            background: var(--glass-border);
+            position: relative;
+        }
+
+        .connector::after {
+            content: '▼';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px;
+            color: var(--text-dim);
+        }
+
+        /* Features List */
+        .features-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1.5rem;
+            padding: 1.5rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 16px;
+        }
+
+        .feature-item i {
+            color: var(--primary);
+            flex-shrink: 0;
+        }
+
+        /* Animations */
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
+            40% {transform: translateY(-10px);}
+            60% {transform: translateY(-5px);}
+        }
+
+        .stats-bar {
+            display: flex;
+            justify-content: space-around;
+            padding: 4rem 2rem;
+            background: linear-gradient(to right, rgba(212, 175, 55, 0.05), transparent);
+            margin-top: 4rem;
+        }
+
+        .stat-card {
+            text-align: center;
+        }
+
+        .stat-value {
+            display: block;
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            color: var(--text-dim);
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+        }
+
+        footer {
+            padding: 4rem;
+            text-align: center;
+            border-top: 1px solid var(--glass-border);
+            color: var(--text-dim);
+        }
+
+        .moroccan-pattern {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgdmlld0JveD0iMCAwIDYwIDYwIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNkNGFmMzciIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djJoLTR2LTJoNHptMCA0djJoLTR2LTJoNHptLTggNHYyaC00di0yaDR6bS00IDR2MmgtNHYtMmg0em0tNCA0djJoLTR2LTJoNHptLTQgNHYyaC00di0yaDR6bS00IDR2MmgtNHYtMmg0em0tNCA0djJoLTR2LTJoNHptLTI0IDB2MmgtNHYtMmg0em00LTR2MmgtNHYtMmg0em00LTR2MmgtNHYtMmg0em00LTR2MmgtNHYtMmg0em00LTR2MmgtNHYtMmg0em00LTR2MmgtNHYtMmg0em00LTR2MmgtNHYtMmg0em00LTR2MmgtNHYtMmg0em00LTQwdjJoLTR2LTJoNHptMCA0djJoLTR2LTJoNHptMCA0djJoLTR2LTJoNHptMCA0djJoLTR2LTJoNHptLTggNHYyaC00di0yaDR6bS00IDR2MmgtNHYtMmg0em0tNCA0djJoLTR2LTJoNHptLTQgNHYyaC00di0yaDR6bS00IDR2MmgtNHYtMmg0em0tNCA0djJoLTR2LTJoNHptLTQgNHYyaC00di0yaDR6bS00IDR2MmgtNHYtMmg0em0tOC0zNnYyaC00di0yaDR6bTQgNHYyaC00di0yaDR6bTQgNHYyaC00di0yaDR6bTQgNHYyaC00di0yaDR6bTQgNHYyaC00di0yaDR6bTQgNHYyaC00di0yaDR6bTQgNHYyaC00di0yaDR6bTQgNHYyaC00di0yaDR6bTMyLTQwdjJoLTR2LTJoNHptLTQgNHYyaC00di0yaDR6bS00IDR2MmgtNHYtMmg0em0tNCA0djJoLTR2LTJoNHptLTQgNHYyaC00di0yaDR6bS00IDR2MmgtNHYtMmg0em0tNCA0djJoLTR2LTJoNHptLTQgNHYyaC00di0yaDR6bS04IDQwdjJoLTR2LTJoNHptLTQgNHYyaC00di0yaDR6bS00IDR2MmgtNHYtMmg0em0tNCA0djJoLTR2LTJoNHptLTQgNHYyaC00di0yaDR6bS00IDR2MmgtNHYtMmg0em0tNCA0djJoLTR2LTJoNHptLTQgNHYyaC00di0yaDR6bS04LTQwdjJoLTR2LTJoNHptLTQgNHYyaC00di0yaDR6bS00IDR2MmgtNHYtMmg0em0tNCA0djJoLTR2LTJoNHptLTQgNHYyaC00di0yaDR6bS00IDR2MmgtNHYtMmg0em0tNCA0djJoLTR2LTJoNHptLTQgNHYyaC00di0yaDR6bSIvPjwvZz48L2c+PC9zdmc+');
+            opacity: 0.5;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 3rem; }
+            .section { padding: 4rem 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="moroccan-pattern"></div>
+
+    <section class="hero">
+        <h1>HIWAYTI</h1>
+        <p>Connecter le monde à l'âme du Maroc à travers l'artisanat et l'aventure.</p>
+        <div class="scroll-indicator">
+            <i data-lucide="chevron-down" size="48"></i>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="section-title">Écosystème des Rôles</h2>
+        <div class="grid-roles">
+            <div class="role-card">
+                <div class="role-icon"><i data-lucide="map-pin"></i></div>
+                <h3>Touriste</h3>
+                <p>Découvre, réserve et explore l'authenticité marocaine avec des recommandations IA.</p>
+            </div>
+            <div class="role-card">
+                <div class="role-icon"><i data-lucide="hammer"></i></div>
+                <h3>Artisan / Prestataire</h3>
+                <p>Gère ses activités, ses réservations et suit ses revenus via un dashboard dédié.</p>
+            </div>
+            <div class="role-card">
+                <div class="role-icon"><i data-lucide="landmark"></i></div>
+                <h3>Commune</h3>
+                <p>Supervise l'impact économique et valide les prestataires locaux.</p>
+            </div>
+            <div class="role-card">
+                <div class="role-icon"><i data-lucide="shield-check"></i></div>
+                <h3>Admin</h3>
+                <p>Gestion globale de la plateforme, modération et statistiques avancées.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" style="background: rgba(255,255,255,0.02); border-radius: 40px;">
+        <h2 class="section-title">Architecture du Projet</h2>
+        <div class="arch-container">
+            <div class="node frontend">
+                <i data-lucide="smartphone"></i> Application Mobile (Expo / React Native)
+            </div>
+            <div class="connector"></div>
+            <div class="node backend">
+                <i data-lucide="flame"></i> Firebase (Auth, Firestore, Storage, Functions)
+            </div>
+            <div class="connector"></div>
+            <div class="node external">
+                <i data-lucide="sparkles"></i> AI Engine (Recommandations & Analyse)
+            </div>
+        </div>
+        
+        <div class="stats-bar">
+            <div class="stat-card">
+                <span class="stat-value">React Native</span>
+                <span class="stat-label">Frontend</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value">Firebase NoSQL</span>
+                <span class="stat-label">Backend</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value">Multi-Rôles</span>
+                <span class="stat-label">Architecture</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="section-title">Fonctionnalités Clés</h2>
+        <div class="features-list">
+            <div class="feature-item">
+                <i data-lucide="zap"></i>
+                <div>
+                    <h3>Découverte Dynamique</h3>
+                    <p>Recherche intelligente par catégorie, commune et proximité avec retours haptiques.</p>
+                </div>
+            </div>
+            <div class="feature-item">
+                <i data-lucide="calendar"></i>
+                <div>
+                    <h3>Gestion des Réservations</h3>
+                    <p>Flux complet de réservation avec notifications temps réel pour prestataires et clients.</p>
+                </div>
+            </div>
+            <div class="feature-item">
+                <i data-lucide="bar-chart-3"></i>
+                <div>
+                    <h3>Tableaux de Bord</h3>
+                    <p>Visualisation de données (KPIs, revenus, satisfaction) avec react-native-chart-kit.</p>
+                </div>
+            </div>
+            <div class="feature-item">
+                <i data-lucide="globe"></i>
+                <div>
+                    <h3>Internationalisation</h3>
+                    <p>Support complet multilingue (i18n) pour une audience mondiale.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <p>&copy; 2026 HIWAYTI Project - L'Héritage Marocain Numérisé</p>
+    </footer>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Simple scroll animation observer
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.role-card, .feature-item, .node').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(20px)';
+            el.style.transition = 'all 0.6s ease-out';
+            observer.observe(el);
+        });
+    </script>
+</body>
+</html>

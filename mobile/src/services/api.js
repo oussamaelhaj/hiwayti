@@ -422,7 +422,7 @@ export async function fetchProviderAnalytics(providerId) {
   try {
     const headers = await authHeader();
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s for Render cold start
 
     const res = await fetch(`${BACKEND_URL}/api/analytics/provider/${providerId}`, { 
       headers,
@@ -430,10 +430,14 @@ export async function fetchProviderAnalytics(providerId) {
     });
     clearTimeout(timeoutId);
 
-    if (!res.ok) throw new Error('Backend unavailable');
+    if (!res.ok) throw new Error(`Backend error: ${res.status}`);
     return await res.json();
   } catch (e) {
-    console.warn('[ANALYTICS] Using Firestore fallback:', e.message);
+    if (e.name === 'AbortError') {
+      console.warn('[ANALYTICS] Backend timeout (15s), using Firestore fallback...');
+    } else {
+      console.warn('[ANALYTICS] Backend error, using Firestore fallback:', e.message);
+    }
     // Fallback: compute from Firestore
     const bookings = await fetchProviderBookings(providerId);
     const completed = bookings.filter(b => b.status === 'completed');
@@ -468,7 +472,7 @@ export async function fetchProviderAnalytics(providerId) {
   }
 }
 
-// ─── REVIEWS ─────────────────────────────────────────────────────────────────
+// ─── REVIEWS & RATINGS ───────────────────────────────────────────────────────
 export async function fetchReviews(targetId, count = 10) {
   const q = query(
     collection(db, 'reviews'),
@@ -478,6 +482,24 @@ export async function fetchReviews(targetId, count = 10) {
   );
   const snap = await getDocs(q);
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function submitReview(reviewData) {
+  const { targetId, userId, userName, rating, comment, targetType } = reviewData;
+  
+  const docRef = await addDoc(collection(db, 'reviews'), {
+    targetId,
+    userId,
+    userName: userName || 'Anonyme',
+    rating,
+    comment,
+    targetType, // 'provider' or 'activity'
+    createdAt: serverTimestamp(),
+  });
+
+  // Note: In a real app, we'd use a Cloud Function to update aggregate rating.
+  // Here we just return the new doc ID.
+  return docRef.id;
 }
 
 export async function addReview(data) {

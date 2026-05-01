@@ -7,20 +7,17 @@ import {
   View, Text, StyleSheet, TouchableOpacity, FlatList,
   Dimensions, Animated, TextInput, StatusBar,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE, Callout } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useTranslation } from 'react-i18next';
 import { colors, spacing, radius, typography, CATEGORIES } from '../utils/theme';
-import { haptic, formatDistance, formatPrice } from '../utils/helpers';
+import { haptic } from '../utils/helpers';
 import {
   fetchNearbyProviders, fetchProvidersByCategory,
-  fetchActivitiesByCategory,
 } from '../services/api';
 import ProviderCard from '../components/cards/ProviderCard';
-import { ProviderCardSkeleton } from '../components/ui/SkeletonLoader';
 
 const { width, height } = Dimensions.get('window');
 
@@ -43,10 +40,13 @@ export default function MapDiscoverScreen({ navigation }) {
   const [loading, setLoading]                 = useState(false);
   const [showList, setShowList]               = useState(false);
   const [mapReady, setMapReady]               = useState(false);
+  const [likelyPlaces, setLikelyPlaces]       = useState([]);
+  const [showPlacesModal, setShowPlacesModal] = useState(false);
+  const [placedMarkers, setPlacedMarkers]     = useState([]);
 
   const cardAnim = useRef(new Animated.Value(300)).current;
 
-  // ── Location + initial load ──
+  // -- Location + initial load --
   useEffect(() => {
     (async () => {
       try {
@@ -129,6 +129,78 @@ export default function MapDiscoverScreen({ navigation }) {
     });
   };
 
+  const findCurrentPlaces = async () => {
+    haptic.select();
+    setLoading(true);
+    try {
+      let loc = location;
+      if (!loc) {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') throw new Error('Permission refusée');
+        loc = await Location.getCurrentPositionAsync({});
+        setLocation(loc);
+      }
+
+      const API_KEY = "AIzaSyBIMXq0wBiP3T0RESNUZ5S91p4lK8BjMbM";
+      const url = `https://places.googleapis.com/v1/places:searchNearby`;
+      
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': API_KEY,
+          'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.types'
+        },
+        body: JSON.stringify({
+          maxResultCount: 10,
+          locationRestriction: {
+            circle: {
+              center: {
+                latitude: loc.coords.latitude,
+                longitude: loc.coords.longitude
+              },
+              radius: 500.0
+            }
+          }
+        })
+      });
+      
+      const data = await res.json();
+      
+      if (data.places && data.places.length > 0) {
+        setLikelyPlaces(data.places);
+        setShowPlacesModal(true);
+      } else {
+        console.warn('[PLACES]', data);
+        alert('Aucun lieu trouvé à proximité avec la nouvelle API.');
+      }
+    } catch (e) {
+      console.warn('[PLACES_ERROR]', e.message);
+    }
+    setLoading(false);
+  };
+
+  const selectLikelyPlace = (place) => {
+    haptic.success();
+    setShowPlacesModal(false);
+    const newMarker = {
+      id: place.id,
+      title: place.displayName?.text || 'Lieu sans nom',
+      address: place.formattedAddress,
+      coordinate: {
+        latitude: place.location.latitude,
+        longitude: place.location.longitude,
+      }
+    };
+    setPlacedMarkers(prev => [...prev, newMarker]);
+    
+    mapRef.current?.animateToRegion({
+      ...newMarker.coordinate,
+      latitudeDelta: 0.01,
+      longitudeDelta: 0.01,
+    }, 600);
+  };
+
   const filteredProviders = providers.filter(p => {
     if (!searchText) return true;
     const q = searchText.toLowerCase();
@@ -166,8 +238,8 @@ export default function MapDiscoverScreen({ navigation }) {
               <Marker
                 key={p.id}
                 coordinate={{ 
-                  latitude: parseFloat(p.location.latitude), 
-                  longitude: parseFloat(p.location.longitude) 
+                   latitude: parseFloat(p.location.latitude), 
+                   longitude: parseFloat(p.location.longitude) 
                 }}
                 onPress={() => selectProvider(p)}
               >
@@ -181,6 +253,17 @@ export default function MapDiscoverScreen({ navigation }) {
               </Marker>
             );
           })}
+
+        {/* CUSTOM PLACES MARKERS */}
+        {placedMarkers.map(m => (
+          <Marker
+            key={m.id}
+            coordinate={m.coordinate}
+            pinColor={colors.accent}
+            title={m.title}
+            description={m.address}
+          />
+        ))}
       </MapView>
 
       {/* SEARCH BAR */}
@@ -201,7 +284,6 @@ export default function MapDiscoverScreen({ navigation }) {
           )}
         </BlurView>
 
-        {/* Category pills */}
         <FlatList
           data={[{ id: null, emoji: '🌐', labelFr: 'Tous', color: colors.gold }, ...CATEGORIES]}
           horizontal
@@ -227,7 +309,7 @@ export default function MapDiscoverScreen({ navigation }) {
       <View style={styles.countBadge}>
         <BlurView tint="dark" intensity={80} style={styles.countBlur}>
           {loading ? (
-            <Text style={styles.countText}>Chargement…</Text>
+            <Text style={styles.countText}>Chargement...</Text>
           ) : (
             <Text style={styles.countText}>
               {filteredProviders.length} prestataire{filteredProviders.length !== 1 ? 's' : ''}
@@ -265,6 +347,15 @@ export default function MapDiscoverScreen({ navigation }) {
           </BlurView>
         </TouchableOpacity>
       )}
+
+      <TouchableOpacity
+        style={[styles.myLocBtn, { bottom: 270 }]}
+        onPress={findCurrentPlaces}
+      >
+        <BlurView tint="dark" intensity={90} style={styles.myLocBlur}>
+          <Ionicons name="search-circle" size={24} color={colors.gold} />
+        </BlurView>
+      </TouchableOpacity>
 
       {/* SELECTED PROVIDER CARD */}
       {selectedProvider && (
@@ -310,9 +401,39 @@ export default function MapDiscoverScreen({ navigation }) {
               showsVerticalScrollIndicator={false}
               ListEmptyComponent={
                 <Text style={{ color: colors.textMuted, textAlign: 'center', marginTop: spacing.xl }}>
-                  {loading ? 'Chargement…' : 'Aucun résultat'}
+                  {loading ? 'Chargement...' : 'Aucun résultat'}
                 </Text>
               }
+            />
+          </BlurView>
+        </View>
+      )}
+
+      {/* LIKELY PLACES MODAL */}
+      {showPlacesModal && (
+        <View style={styles.listOverlay}>
+          <BlurView tint="dark" intensity={98} style={styles.listBlur}>
+            <TouchableOpacity onPress={() => setShowPlacesModal(false)} style={styles.dismissBtn}>
+              <Ionicons name="close" size={24} color={colors.textPrimary} />
+            </TouchableOpacity>
+            <Text style={styles.listTitle}>Lieux à proximité</Text>
+            <FlatList
+              data={likelyPlaces}
+              keyExtractor={i => i.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity 
+                  style={styles.placeItem} 
+                  onPress={() => selectLikelyPlace(item)}
+                >
+                  <Ionicons name="location-outline" size={20} color={colors.gold} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.placeName}>{item.displayName?.text}</Text>
+                    <Text style={styles.placeAddress}>{item.formattedAddress}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+                </TouchableOpacity>
+              )}
+              contentContainerStyle={{ paddingBottom: 40 }}
             />
           </BlurView>
         </View>
@@ -396,6 +517,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.textMuted, alignSelf: 'center', marginBottom: spacing.md,
   },
   listTitle: { ...typography.h3, color: colors.textPrimary, marginBottom: spacing.md },
+  placeItem: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
+    paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)',
+  },
+  placeName: { ...typography.bodyBold, color: colors.textPrimary },
+  placeAddress: { ...typography.caption, color: colors.textMuted },
 });
 
 const darkMapStyle = [

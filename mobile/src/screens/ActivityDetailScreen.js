@@ -5,14 +5,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList,
-  Dimensions, Animated, StatusBar, Alert, SafeAreaView, Platform
+  Dimensions, Animated, StatusBar, Alert, SafeAreaView, Platform,
+  Modal, TextInput, ActivityIndicator, KeyboardAvoidingView
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { colors, spacing, radius, typography, shadow, CATEGORIES, gradients } from '../utils/theme';
 import { haptic, formatPrice, formatRating } from '../utils/helpers';
-import { fetchReviews, toggleFavorite, fetchProviderById } from '../services/api';
+import { fetchReviews, toggleFavorite, fetchProviderById, addReview } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import StarRating from '../components/ui/StarRating';
 import AppButton from '../components/ui/AppButton';
@@ -39,6 +40,10 @@ export default function ActivityDetailScreen({ navigation, route }) {
   const [loadingRev, setLoadingRev] = useState(true);
   const [isFav, setIsFav] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [newRating, setNewRating] = useState(0);
+  const [newComment, setNewComment] = useState('');
   
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -58,18 +63,22 @@ export default function ActivityDetailScreen({ navigation, route }) {
     extrapolate: 'clamp'
   });
 
+  const loadReviews = async () => {
+    if (!id) return;
+    setLoadingRev(true);
+    try {
+      const data = await fetchReviews(id, 10);
+      setReviews(data);
+    } catch (e) { console.warn(e); }
+    setLoadingRev(false);
+  };
+
   useEffect(() => {
-    if (id) {
-      fetchReviews(id, 10)
-        .then(setReviews)
-        .catch(console.warn)
-        .finally(() => setLoadingRev(false));
-      
-      if (providerId) {
-        fetchProviderById(providerId)
-          .then(setProvider)
-          .catch(console.warn);
-      }
+    loadReviews();
+    if (id && providerId) {
+      fetchProviderById(providerId)
+        .then(setProvider)
+        .catch(console.warn);
     }
   }, [id, providerId]);
 
@@ -126,12 +135,35 @@ export default function ActivityDetailScreen({ navigation, route }) {
       duration: duration,
     };
 
-    // Navigate to BookingFlow (standalone screen in AuthenticatedStack)
-    // This avoids the nested tab navigation param loss issue
     navigation.navigate('BookingFlow', { 
       activity: activityData,
       provider: providerData
     });
+  };
+
+  const handleSubmitReview = async () => {
+    if (!user) return Alert.alert('Connexion requise', 'Veuillez vous connecter pour laisser un avis.');
+    if (newRating === 0) return Alert.alert('Note manquante', 'Veuillez sélectionner une note.');
+    
+    setSubmittingReview(true);
+    try {
+      await addReview({
+        targetId: id,
+        targetType: 'activity',
+        rating: newRating,
+        comment: newComment,
+        userName: user.displayName || user.email.split('@')[0],
+      });
+      haptic.success();
+      setNewRating(0);
+      setNewComment('');
+      setShowReviewModal(false);
+      loadReviews();
+    } catch (e) {
+      Alert.alert('Erreur', 'Impossible de publier votre avis.');
+    } finally {
+      setSubmittingReview(false);
+    }
   };
 
   // Build gallery images — ensure all are valid strings
@@ -384,8 +416,8 @@ export default function ActivityDetailScreen({ navigation, route }) {
           <View style={styles.section}>
             <View style={styles.reviewsHeader}>
               <Text style={styles.sectionTitle}>Avis clients</Text>
-              <TouchableOpacity>
-                <Text style={styles.seeAllText}>Tout voir</Text>
+              <TouchableOpacity onPress={() => setShowReviewModal(true)}>
+                <Text style={styles.seeAllText}>Laisser un avis</Text>
               </TouchableOpacity>
             </View>
             {loadingRev ? <ListItemSkeleton /> : reviews.length === 0 ? (
@@ -422,6 +454,56 @@ export default function ActivityDetailScreen({ navigation, route }) {
           />
         </View>
       </View>
+
+      {/* REVIEW MODAL */}
+      <Modal visible={showReviewModal} animationType="slide" transparent>
+        <BlurView tint="dark" intensity={95} style={StyleSheet.absoluteFillObject}>
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={{ flex: 1, justifyContent: 'center', padding: spacing.xl }}
+          >
+            <View style={styles.reviewModalContent}>
+              <Text style={styles.modalTitle}>Votre avis compte</Text>
+              <Text style={styles.modalSub}>Comment s'est passée votre activité {name} ?</Text>
+              
+              <View style={styles.starRow}>
+                <StarRating 
+                  interactive 
+                  rating={newRating} 
+                  onRate={setNewRating} 
+                  size={40} 
+                />
+              </View>
+
+              <TextInput
+                style={styles.reviewInput}
+                placeholder="Écrivez votre commentaire ici..."
+                placeholderTextColor={colors.textMuted}
+                multiline
+                numberOfLines={4}
+                value={newComment}
+                onChangeText={setNewComment}
+              />
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity 
+                  style={[styles.modalBtn, { backgroundColor: 'rgba(255,255,255,0.05)' }]} 
+                  onPress={() => setShowReviewModal(false)}
+                >
+                  <Text style={{ color: colors.textSecondary }}>Annuler</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.modalBtn, { backgroundColor: colors.gold }]} 
+                  onPress={handleSubmitReview}
+                  disabled={submittingReview}
+                >
+                  {submittingReview ? <ActivityIndicator size="small" color={colors.bg} /> : <Text style={{ color: colors.bg, fontWeight: '700' }}>Publier</Text>}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </BlurView>
+      </Modal>
     </View>
   );
 }
@@ -702,5 +784,33 @@ const styles = StyleSheet.create({
   },
   bookBtn: {
     minWidth: width * 0.42,
+  },
+
+  reviewModalContent: {
+    backgroundColor: colors.bgCard,
+    borderRadius: radius.xl,
+    padding: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.goldBorder,
+    gap: spacing.lg,
+  },
+  modalTitle: { ...typography.h3, color: colors.textPrimary, textAlign: 'center' },
+  modalSub: { ...typography.body, color: colors.textMuted, textAlign: 'center', marginBottom: spacing.md },
+  starRow: { alignSelf: 'center', marginBottom: spacing.md },
+  reviewInput: {
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: radius.md,
+    padding: spacing.md,
+    color: colors.textPrimary,
+    ...typography.body,
+    height: 120,
+    textAlignVertical: 'top',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  modalButtons: { flexDirection: 'row', gap: spacing.md },
+  modalBtn: {
+    flex: 1, height: 50, borderRadius: radius.md,
+    alignItems: 'center', justifyContent: 'center',
   },
 });

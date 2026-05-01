@@ -165,20 +165,31 @@ export default function ProviderDashboardScreen({ navigation }) {
       }
 
       // 2. Fetch related data (parallel, with individual catches to prevent global failure)
-      const [b, r, acts, an] = await Promise.all([
-        fetchProviderBookings(providerId).catch(e => { console.warn('[DASHBOARD] Bookings failed:', e.message); return []; }),
-        fetchReviews(providerId, 20).catch(e => { console.warn('[DASHBOARD] Reviews failed:', e.message); return []; }),
-        fetchProviderActivities(providerId).catch(e => { console.warn('[DASHBOARD] Activities failed:', e.message); return []; }),
-        fetchProviderAnalytics(providerId).catch(e => { console.warn('[DASHBOARD] Analytics failed:', e.message); return null; }),
+      const results = await Promise.allSettled([
+        fetchProviderBookings(providerId),
+        fetchReviews(providerId, 20),
+        fetchProviderActivities(providerId),
+        fetchProviderAnalytics(providerId),
       ]);
 
-      setBookings(b);
-      setReviews(r);
-      setActivities(acts);
-      setAnalytics(an);
+      const [bRes, rRes, actsRes, anRes] = results;
+
+      if (bRes.status === 'fulfilled') setBookings(bRes.value);
+      else console.warn('[DASHBOARD] Bookings failed:', bRes.reason);
+
+      if (rRes.status === 'fulfilled') setReviews(rRes.value);
+      else console.warn('[DASHBOARD] Reviews failed:', rRes.reason);
+
+      if (actsRes.status === 'fulfilled') setActivities(actsRes.value);
+      else console.warn('[DASHBOARD] Activities failed:', actsRes.reason);
+
+      if (anRes.status === 'fulfilled') setAnalytics(anRes.value);
+      else console.warn('[DASHBOARD] Analytics failed:', anRes.reason);
+
     } catch (e) {
       console.error('[DASHBOARD] Critical load error:', e);
-      Alert.alert('Erreur de chargement', 'Impossible de charger vos données. Vérifiez votre connexion.');
+      // Don't alert here as individual catches handle most cases, 
+      // but we can set an error state if needed.
     } finally {
       setLoading(false);
       loadingRef.current = false;
@@ -245,8 +256,15 @@ export default function ProviderDashboardScreen({ navigation }) {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center', gap: spacing.lg }}>
         <ActivityIndicator color={colors.gold} size="large" />
+        <Text style={{ ...typography.body, color: colors.textMuted }}>Chargement de vos données...</Text>
+        <TouchableOpacity 
+          style={{ marginTop: spacing.xl, padding: spacing.md }}
+          onPress={load}
+        >
+          <Text style={{ color: colors.gold, ...typography.captionBold }}>Réessayer maintenant</Text>
+        </TouchableOpacity>
       </View>
     );
   }
